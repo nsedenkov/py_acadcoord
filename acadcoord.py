@@ -32,7 +32,7 @@ class main:
         self.DicObjType = {1:'', 2:'3D полилиния', 3:'', 4:'Дуга', 5:'', 6:'', 7:'Вхождение блока', 8:'Окружность', 9:'Aligned размер', 10:'Угловой размер', 11:'', 12:'', 13:'', 14:'', 15:'', 16:'Эллипс', 17:'Штриховка', 18:'Выноска', 19:'Линия', 20:'', 21:'', 22:'Точка', 23:'2D полилиния', 24:'Полилиния', 25:'', 26:'Маскирующая область', 27:'Луч', 28:'Область', 29:'', 30:'', 31:'Сплайн', 32:'Текст', 33:'', 34:'', 35:'', 36:'Конструктивная линия', 37:'', 38:'', 39:'', 40:''}
         self.title = 'Экспорт координат объектов AutoCAD'
         self.master.title(self.title)
-        self.master.geometry('360x260')
+        self.master.geometry('360x290')
         self.master.resizable(False, False)
         self.MenuVar = StringVar()
         self.RBVar = IntVar()
@@ -217,11 +217,12 @@ class main:
         self.PLineCrd.append(tmplst)
         
     def SortPntList(self):
-        lxy = []
-        tmplst = []
-        looplst = []
-        reslst = []
-        fndlst = []
+        lxy = []    # Список уникальных пар X Y
+        tmplst = [] # Копия основного списка контуров PLineCrd
+        looplst = []    # Временный список текущих контуров для итерации
+        reslst = [] # Список отсортированных контуров
+        fndlst = [] # Временный список для найденных соседних контуров - живет в течение одной итерации
+        lidx = []   # Список индексов контуров, найденных в tmplst в ходе итерации
         tmplst.extend(self.PLineCrd)
         for crdlst in tmplst:
             for txy in crdlst:
@@ -231,9 +232,9 @@ class main:
         SP = self.GetSouthPnt(lxy)
         WP = self.GetWestPnt(lxy)
         EP = self.GetEastPnt(lxy)
-        deltax = EP[0] - WP[0]
-        deltay = NP[1] - SP[1]
-        if self.RBVar.get() ==  1:
+        if self.RBVar.get() ==  1: # Автоматический выбор направления
+            deltax = EP[0] - WP[0]
+            deltay = NP[1] - SP[1]
             if deltay >= deltax: # Ориентация север - юг
                 for crdlst in tmplst:
                     if NP in crdlst:
@@ -258,11 +259,12 @@ class main:
             for crdlst in tmplst:
                 if EP in crdlst:
                     idx = tmplst.index(crdlst)
+        # Берем первый контур по найденному индексу
         tmpcrd = tmplst.pop(idx)
         reslst.insert(0,tmpcrd)
         looplst.append(tmpcrd)
         while len(tmplst) > 1:
-            #del lidx[0:len(lidx)]
+            del lidx[0:len(lidx)]
             for tmpcrd in looplst:
                 idx = -1
                 m1 = set(tmpcrd)
@@ -270,10 +272,15 @@ class main:
                     m2 = set(crdlst)
                     if len(m1 & m2) > 0: # Если мощность пересечения больше нуля - соседний участок найден
                         idx = tmplst.index(crdlst)
-                        tmpcrd = tmplst.pop(idx)
-                        fndlst.append(tmpcrd)
+                        lidx.append(idx)
                         continue
-            if idx == -1: # если разрыв в трассе
+            i = 0
+            for idx in lidx:
+                idx -= i # Сдвиг индекса в случае удаления нескольких записей (на 2 шаге -1 и т.д.)
+                i += 1
+                tmpcrd = tmplst.pop(idx)
+                fndlst.append(tmpcrd)
+            if (idx == -1) and (len(lidx) == 0): # если разрыв в трассе
                 del lxy[0:len(lxy)]
                 for crdlst in tmplst:
                     for txy in crdlst:
