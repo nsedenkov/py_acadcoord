@@ -5,7 +5,8 @@
 #
 #   Экспортирует в Excel координаты объектов Polyline и 2DPolyline из указанного слоя
 #   активного чертежа AutoCAD
-#   В модели в слое Numbers проставляет номера точек (если слоя нет, он будет создан)
+#   В модели в слое Numbers проставляет номера точек (если слоя нет, он будет создан),
+#   а также номера контуров
 #
 #===============================================================================
 
@@ -23,7 +24,6 @@ from comtypes.automation import *
 from array import array
 import locale
 from math import sqrt
-#from threading import Thread, RLock
 
 class main:
 
@@ -32,14 +32,15 @@ class main:
         self.DicObjType = {1:'', 2:'3D полилиния', 3:'', 4:'Дуга', 5:'', 6:'', 7:'Вхождение блока', 8:'Окружность', 9:'Aligned размер', 10:'Угловой размер', 11:'', 12:'', 13:'', 14:'', 15:'', 16:'Эллипс', 17:'Штриховка', 18:'Выноска', 19:'Линия', 20:'', 21:'', 22:'Точка', 23:'2D полилиния', 24:'Полилиния', 25:'', 26:'Маскирующая область', 27:'Луч', 28:'Область', 29:'', 30:'', 31:'Сплайн', 32:'Текст', 33:'', 34:'', 35:'', 36:'Конструктивная линия', 37:'', 38:'', 39:'', 40:''}
         self.title = 'Экспорт координат объектов AutoCAD'
         self.master.title(self.title)
-        self.master.geometry('360x220')
+        self.master.geometry('360x260')
         self.master.resizable(False, False)
         self.MenuVar = StringVar()
         self.RBVar = IntVar()
         self.RBVar.set(1)
         self.PLineCrd = []
         self.nprefix = ''
-        self.startnumfrom = 1
+        self.startnumpntfrom = 1
+        self.startnumprclfrom = 1
         self.master.LFrame = Frame(self.master, width = 280)
         self.master.LFrame.pack(side = 'left', fill = 'y')
         self.master.RFrame = Frame(self.master)
@@ -72,7 +73,8 @@ class main:
         self.master.sf4=Frame(self.master.frame4)
         self.master.sf5=Frame(self.master.frame4)
         self.master.sf6=LabelFrame(self.master.frame5, height = 80, width = 220, labelanchor='nw', text='Префикс нумерации')
-        self.master.sf7=LabelFrame(self.master.frame5, height = 80, width = 220, labelanchor='nw', text='Начать нумерацию с:')
+        self.master.sf7=LabelFrame(self.master.frame5, height = 80, width = 220, labelanchor='nw', text='Нумерация точек с:')
+        self.master.sf8=LabelFrame(self.master.frame5, height = 80, width = 220, labelanchor='nw', text='Нумерация участков с:')
         self.master.sf1.pack(pady = 1, fill = 'x')
         self.master.sf2.pack(pady = 1, fill = 'x')
         self.master.sf3.pack(pady = 1, fill = 'x')
@@ -80,6 +82,7 @@ class main:
         self.master.sf5.pack(pady = 1, fill = 'x')
         self.master.sf6.pack(side = 'bottom', fill = 'both', expand = 1, padx=2, pady = 2)
         self.master.sf7.pack(side = 'bottom', fill = 'x', expand = 0, padx=2, pady = 2)
+        self.master.sf8.pack(side = 'bottom', fill = 'x', expand = 0, padx=2, pady = 2)
         self.master.rb1=Radiobutton(self.master.sf1, text = 'По умолчанию', variable=self.RBVar, value=1)
         self.master.rb2=Radiobutton(self.master.sf2, text = 'Север - юг', variable=self.RBVar, value=2)
         self.master.rb3=Radiobutton(self.master.sf3, text = 'Запад - восток', variable=self.RBVar, value=3)
@@ -92,9 +95,12 @@ class main:
         self.master.rb5.pack(side = 'left', padx = 2, fill = 'x')
         self.master.etr1 = Entry(self.master.sf6, width = 18)
         self.master.etr2 = Entry(self.master.sf7, width = 18)
+        self.master.etr3 = Entry(self.master.sf8, width = 18)
         self.master.etr1.pack(side = 'left', padx = 2, pady = 2, fill = 'both')
         self.master.etr2.pack(side = 'left', padx = 2, pady = 2, fill = 'both')
+        self.master.etr3.pack(side = 'left', padx = 2, pady = 2, fill = 'both')
         self.master.etr2.insert(0, '1')
+        self.master.etr3.insert(0, '1')
         locale.setlocale(locale.LC_NUMERIC, 'Russian_Russia')
         self.ConnectACAD()
         self.master.mainloop()
@@ -142,7 +148,8 @@ class main:
         for crdlst in self.PLineCrd:
             ROW += 1
             st = 'Участок '
-            S.Cells[ROW, 1] = st.decode('utf-8').encode('cp1251') + self.nprefix + str(i)
+            S.Cells[ROW, 1] = st.decode('utf-8').encode('cp1251') + self.nprefix + str(i + self.startnumprclfrom - 1)
+            self.MarkParcel(crdlst, self.nprefix + str(i + self.startnumprclfrom - 1), 'Numbers')
             ROW += 1
             ROW = self.XlsHdrString(S, ROW)
             del pxy[0:len(pxy)]
@@ -150,19 +157,15 @@ class main:
             for txy in crdlst:
                 if lxy.count(txy) == 0:
                     lxy.append(txy)
-                    self.MarkPoint(txy, self.nprefix + str(lxy.index(txy)+self.startnumfrom), 'Numbers')
+                    self.MarkPoint(txy, self.nprefix + str(lxy.index(txy)+self.startnumpntfrom), 'Numbers')
                 if pxy.count(txy) == 0:
-                    self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(txy)+self.startnumfrom), txy[0], txy[1])
+                    self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(txy)+self.startnumpntfrom), txy[0], txy[1])
                     pxy.append(txy)
                     ROW += 1
                 if j == 1:
                     txy1 = txy
-                #elif j == len(crdlst):
-                    #if (txy1[0] != txy[0]) and (txy1[1] != txy[1]):
-                        #ROW+= 1
-                        #self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(txy1)+self.startnumfrom), txy1[0], txy1[1])
                 j += 1
-            self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(txy1)+self.startnumfrom), txy1[0], txy1[1])
+            self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(txy1)+self.startnumpntfrom), txy1[0], txy1[1])
             i += 1
 
     def Quit(self):
@@ -170,7 +173,8 @@ class main:
 
     def btn1_press(self):
         self.nprefix = self.master.etr1.get()
-        self.startnumfrom = int(self.master.etr2.get())
+        self.startnumpntfrom = int(self.master.etr2.get())
+        self.startnumprclfrom = int(self.master.etr3.get())
         self.ToExcel()
         
     def createMenu(self, master = None):
@@ -376,6 +380,26 @@ class main:
         ent.Layer = lay
         p1 = point(xy[0]+0.3, xy[1]+0.3)
         ent = self.mspace.AddText(num, p1, 1)
+        ent.Layer = lay
+        
+    def MarkParcel(self, lxy, num, lay):
+
+        def point(*args):
+            lst = [0.]*3
+            if len(args) < 3:
+                lst[0:2] = [float(x) for x in args[0:2]]
+            else:
+                lst = [float(x) for x in args[0:3]]
+            return VARIANT(array("d",lst))
+        
+        NP = self.GetNordPnt(lxy)
+        SP = self.GetSouthPnt(lxy)
+        WP = self.GetWestPnt(lxy)
+        EP = self.GetEastPnt(lxy)
+        x = (WP[0] + EP[0]) // 2
+        y = (NP[1] + SP[1]) // 2
+        p1 = point(x,y)
+        ent = self.mspace.AddText(num, p1, 2)
         ent.Layer = lay
     
 root=Tk()
