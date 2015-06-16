@@ -214,14 +214,24 @@ class main:
         for j in xrange(0,len(crdx)):
             txy = (round(crdx[j],2), round(crdy[j],2))
             tmplst.append(txy)
-        NP = self.GetNordPnt(tmplst)
-        j = tmplst.index(NP)
-        lst1 = tmplst[j:len(tmplst)]
-        lst2 = tmplst[0:j ]
-        del tmplst[0:len(tmplst)]
-        tmplst.extend(lst1)
-        tmplst.extend(lst2)
         self.PLineCrd.append(tmplst)
+        
+    def SwapPntLst(self, lst, dir):
+        reslst = []
+        if dir == 1:
+            SP = self.GetNordPnt(lst)
+        elif dir == 2:
+            SP = self.GetWestPnt(lst)
+        elif dir == 3:
+            SP = self.GetSouthPnt(lst)
+        else:
+            SP = self.GetEastPnt(lst)
+        j = lst.index(SP)
+        lst1 = lst[j:len(lst)]
+        lst2 = lst[0:j ]
+        reslst.extend(lst1)
+        reslst.extend(lst2)
+        return reslst
         
     def SortPntList(self):
         lxy = []    # Список уникальных пар X Y
@@ -230,6 +240,7 @@ class main:
         reslst = [] # Список отсортированных контуров
         fndlst = [] # Временный список для найденных соседних контуров - живет в течение одной итерации
         lidx = []   # Список индексов контуров, найденных в tmplst в ходе итерации
+        nmbdir = 0  # Направление нумерации: 1 - от севера, 2 - от запада, 3 - от юга, 4 - от востока
         tmplst.extend(self.PLineCrd)
         for crdlst in tmplst:
             for txy in crdlst:
@@ -243,31 +254,37 @@ class main:
             deltax = EP[0] - WP[0]
             deltay = NP[1] - SP[1]
             if deltay >= deltax: # Ориентация север - юг
+                nmbdir = 1
                 for crdlst in tmplst:
                     if NP in crdlst:
                         idx = tmplst.index(crdlst)
             else: # Ориентация запад - восток
+                nmbdir = 2
                 for crdlst in tmplst:
                     if WP in crdlst:
                         idx = tmplst.index(crdlst)
         elif self.RBVar.get() ==  2: # Принудительно от севера
+            nmbdir = 1
             for crdlst in tmplst:
                 if NP in crdlst:
                     idx = tmplst.index(crdlst)
         elif self.RBVar.get() ==  3: # Принудительно от запада
+            nmbdir = 2
             for crdlst in tmplst:
                 if WP in crdlst:
                     idx = tmplst.index(crdlst)
         elif self.RBVar.get() ==  4: # Принудительно от юга
+            nmbdir = 3
             for crdlst in tmplst:
                 if SP in crdlst:
                     idx = tmplst.index(crdlst)
         else: # Принудительно от востока
+            nmbdir = 4
             for crdlst in tmplst:
                 if EP in crdlst:
                     idx = tmplst.index(crdlst)
         # Берем первый контур по найденному индексу
-        tmpcrd = tmplst.pop(idx)
+        tmpcrd = self.SwapPntLst(tmplst.pop(idx), nmbdir)
         reslst.insert(0,tmpcrd)
         looplst.append(tmpcrd)
         while len(tmplst) > 1:
@@ -285,7 +302,7 @@ class main:
             for idx in lidx:
                 idx -= i # Сдвиг индекса в случае удаления нескольких записей (на 2 шаге -1 и т.д.)
                 i += 1
-                tmpcrd = tmplst.pop(idx)
+                tmpcrd = self.SwapPntLst(tmplst.pop(idx), nmbdir)
                 fndlst.append(tmpcrd)
             if (idx == -1) and (len(lidx) == 0): # если разрыв в трассе
                 del lxy[0:len(lxy)]
@@ -321,7 +338,7 @@ class main:
                 for crdlst in tmplst:
                     if PP in crdlst: # если ближайшая точка принадлежит контуру - ближайший участок найден
                         idx = tmplst.index(crdlst)
-                tmpcrd = tmplst.pop(idx)
+                tmpcrd = self.SwapPntLst(tmplst.pop(idx), nmbdir)
                 fndlst.append(tmpcrd)
             del looplst[0:len(looplst)]
             looplst.extend(fndlst)
