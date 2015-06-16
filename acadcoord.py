@@ -144,7 +144,6 @@ class main:
         lxy = [] # Сквозная нумерация точек
         pxy = [] # Список точек внутри участка для исключения дублирования строк в ведомости
         i = 1
-        self.SortPntList()
         for crdlst in self.PLineCrd:
             ROW += 1
             st = 'Участок '
@@ -175,6 +174,7 @@ class main:
         self.nprefix = self.master.etr1.get()
         self.startnumpntfrom = int(self.master.etr2.get())
         self.startnumprclfrom = int(self.master.etr3.get())
+        self.SortPntList()
         self.ToExcel()
         
     def createMenu(self, master = None):
@@ -214,6 +214,13 @@ class main:
         for j in xrange(0,len(crdx)):
             txy = (round(crdx[j],2), round(crdy[j],2))
             tmplst.append(txy)
+        NP = self.GetNordPnt(tmplst)
+        j = tmplst.index(NP)
+        lst1 = tmplst[j:len(tmplst)]
+        lst2 = tmplst[0:j ]
+        del tmplst[0:len(tmplst)]
+        tmplst.extend(lst1)
+        tmplst.extend(lst2)
         self.PLineCrd.append(tmplst)
         
     def SortPntList(self):
