@@ -209,8 +209,25 @@ class main:
         
     def CollectCoord(self, coords):
         tmplst = []
-        crdx = coords[0:len(coords)-1:2]
-        crdy = coords[1:len(coords):2]
+        if (len(coords) % 2 == 0):
+            if (len(coords) % 3 > 0):
+                # Делится на 2, не делится на 3
+                crdx = coords[0:len(coords)-1:2]
+                crdy = coords[1:len(coords):2]
+            else:
+                # Делится и на 2, и на 3
+                crdx = coords[0:len(coords)-2:3]
+                crdy = coords[1:len(coords)-1:3]
+                crdz = coords[2:len(coords):3]
+                zst = set(crdz)
+                if len(zst) > 1: # Если не все z одинаковые - делить на 2
+                    crdx = coords[0:len(coords)-1:2]
+                    crdy = coords[1:len(coords):2]
+        else:
+            # Не делится на 2
+            crdx = coords[0:len(coords)-2:3]
+            crdy = coords[1:len(coords)-1:3]
+            crdz = coords[2:len(coords):3]
         for j in xrange(0,len(crdx)):
             txy = (round(crdx[j],2), round(crdy[j],2))
             tmplst.append(txy)
@@ -296,8 +313,8 @@ class main:
                     m2 = set(crdlst)
                     if len(m1 & m2) > 0: # Если мощность пересечения больше нуля - соседний участок найден
                         idx = tmplst.index(crdlst)
-                        lidx.append(idx)
-                        continue
+                        if not idx in lidx:
+                            lidx.append(idx)
             i = 0
             for idx in lidx:
                 idx -= i # Сдвиг индекса в случае удаления нескольких записей (на 2 шаге -1 и т.д.)
