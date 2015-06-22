@@ -23,6 +23,7 @@ from comtypes.client import *
 from comtypes.automation import *
 from array import array
 import locale
+import string
 from math import sqrt
 
 class main:
@@ -156,9 +157,13 @@ class main:
             for txy in crdlst:
                 if lxy.count(txy) == 0:
                     lxy.append(txy)
-                    self.MarkPoint(txy, self.nprefix + str(lxy.index(txy)+self.startnumpntfrom), 'Numbers')
+                    if len(str(lxy.index(txy)+self.startnumpntfrom)) > 3:
+                        num = self.nprefix + ' ' + str(lxy.index(txy)+self.startnumpntfrom)
+                    else:
+                        num = self.nprefix + str(lxy.index(txy)+self.startnumpntfrom)
+                    self.MarkPoint(txy, num, 'Numbers')
                 if pxy.count(txy) == 0:
-                    self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(txy)+self.startnumpntfrom), txy[0], txy[1])
+                    self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(txy) + self.startnumpntfrom), txy[0], txy[1])
                     pxy.append(txy)
                     ROW += 1
                 if j == 1:
@@ -427,7 +432,12 @@ class main:
         ent = self.mspace.AddCircle(p1, 0.1)
         ent.Layer = lay
         p1 = point(xy[0]+0.3, xy[1]+0.3)
-        ent = self.mspace.AddText(num, p1, 1)
+        sh = len(num)
+        if (len(self.nprefix) > 0) and (len(num.replace(self.nprefix, '')) > 3):
+            sh = sh // 2
+        th = string.Template('\H1;$n')
+        ent = self.mspace.AddMText(p1, sh, th.substitute(n=num))
+        ent.LineSpacingFactor = 0.7
         ent.Layer = lay
         
     def MarkParcel(self, lxy, num, lay):
