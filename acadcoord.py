@@ -30,12 +30,66 @@ class main:
 
     def __init__(self, master):
         self.master = master
-        self.DicObjType = {1:'', 2:'3D полилиния', 3:'', 4:'Дуга', 5:'', 6:'', 7:'Вхождение блока', 8:'Окружность', 9:'Aligned размер', 10:'Угловой размер', 11:'', 12:'', 13:'', 14:'', 15:'', 16:'Эллипс', 17:'Штриховка', 18:'Выноска', 19:'Линия', 20:'', 21:'', 22:'Точка', 23:'2D полилиния', 24:'Полилиния', 25:'', 26:'Маскирующая область', 27:'Луч', 28:'Область', 29:'', 30:'', 31:'Сплайн', 32:'Текст', 33:'', 34:'', 35:'', 36:'Конструктивная линия', 37:'', 38:'', 39:'', 40:''}
+        self.DicObjType = {1:'',
+                                  2:'3D полилиния',
+                                  3:'',
+                                  4:'Дуга',
+                                  5:'',
+                                  6:'',
+                                  7:'Вхождение блока',
+                                  8:'Окружность',
+                                  9:'Параллельный размер',
+                                  10:'Угловой размер',
+                                  11:'',
+                                  12:'',
+                                  13:'',
+                                  14:'',
+                                  15:'',
+                                  16:'Эллипс',
+                                  17:'Штриховка',
+                                  18:'Выноска',
+                                  19:'Линия',
+                                  20:'',
+                                  21:'',
+                                  22:'Точка',
+                                  23:'2D полилиния',
+                                  24:'Полилиния',
+                                  25:'',
+                                  26:'Маскирующая область',
+                                  27:'Луч',
+                                  28:'Область',
+                                  29:'',
+                                  30:'',
+                                  31:'Сплайн',
+                                  32:'Текст',
+                                  33:'',
+                                  34:'',
+                                  35:'',
+                                  36:'Конструктивная линия',
+                                  37:'',
+                                  38:'',
+                                  39:'',
+                                  40:''
+                                 }
+        self.DicScales = {
+                                0:u'Черновик',
+                                1:'1:100',
+                                2:'1:200',
+                                3:'1:500',
+                                4:'1:1 000',
+                                5:'1:2 000',
+                                6:'1:5 000',
+                                7:'1:10 000',
+                                8:'1:25 000',
+                                9:'1:50 000',
+                                10:'1:100 000'
+                              }
         self.title = 'Экспорт координат объектов AutoCAD'
         self.master.title(self.title)
         self.master.geometry('360x290')
         self.master.resizable(False, False)
-        self.MenuVar = StringVar()
+        self.LayrVar = StringVar()
+        self.SclVar = StringVar()
         self.RBVar = IntVar()
         self.RBVar.set(1)
         self.PLineCrd = []
@@ -56,10 +110,23 @@ class main:
         self.master.frame4.pack(side = 'top', fill = 'both', expand = 1, padx=2)
         self.master.frame5=Frame(self.master.LFrame, height = 80)
         self.master.frame5.pack(side = 'top', fill = 'x', expand = 0)
+        self.master.frame6 = LabelFrame(self.master.RFrame, height = 80, labelanchor='nw', text='Надписи для масштаба:')
+        self.master.frame6.pack(side = 'bottom', fill = 'x', expand = 0, padx=2)
+
         self.master.scrl=Scrollbar(self.master.frame2)
         self.master.entitys = Listbox(self.master.frame2, yscrollcommand=(self.master.scrl, 'set'))
-        self.master.layers = self.createMenu(self.master.frame1)
+
+        self.master.layers = Menubutton(self.master.frame1, indicatoron = 1, anchor = 'w', textvariable = self.LayrVar)
+        self.lmenu = Menu(self.master.layers, tearoff = 0, bg = 'white')
+        self.master.layers.configure(menu = self.lmenu)
         self.master.layers.pack(side=LEFT, expand = 1, fill='x')
+        self.master.scales = Menubutton(self.master.frame6, indicatoron = 1, anchor = 'w', textvariable = self.SclVar)
+        self.smenu = Menu(self.master.scales, tearoff = 0, bg = 'white')
+        self.master.scales.configure(menu = self.smenu)
+        self.master.scales.pack(side=LEFT, expand = 1, fill='x')
+        for x in xrange(0,len(self.DicScales)):
+            self.smenu.add_command(label = self.DicScales[x], command = lambda x = x: self.SetActiveScale(x))
+        self.SclVar.set(self.smenu.entrycget(0, 'label'))
         self.master.btn1 = Button(self.master.frame3, width = 16, height = 1, text = 'Экспорт', state=DISABLED, command=self.btn1_press)
         self.master.btn2 = Button(self.master.frame3, width = 16, height = 1, text = 'Закрыть', command=self.Quit)
         self.master.btn1.pack(anchor = 'n', side = 'left', padx = 2, pady = 2, expand = 1)
@@ -182,22 +249,15 @@ class main:
         self.SortPntList()
         self.ToExcel()
         
-    def createMenu(self, master = None):
-        self.mb = Menubutton(master, indicatoron = 1, anchor = 'w', textvariable = self.MenuVar)
-        self.mb.pack(padx = 2, pady = 1)
-        self.menu = Menu(self.mb, tearoff = 0, bg = 'white')
-        self.mb.configure(menu = self.menu)
-        return self.mb
-
     def ConnectACAD(self):
         self.acad = GetActiveObject("AutoCAD.Application")
         self.dwg = self.acad.ActiveDocument
         self.mspace = self.dwg.ModelSpace
         self.master.title(self.title+' - '+self.dwg.Name.encode('utf-8'))
-        for x in xrange(0,self.dwg.Layers.Count) :
-            self.menu.add_command(label = self.dwg.Layers[x].Name, command = lambda x = x: self.SetActiveLayer(x))
-        self.MenuVar.set(self.menu.entrycget(0, 'label'))
-        self.LayerObjects(self.menu.entrycget(0, 'label'))
+        for x in xrange(0,self.dwg.Layers.Count):
+            self.lmenu.add_command(label = self.dwg.Layers[x].Name, command = lambda x = x: self.SetActiveLayer(x))
+        self.LayrVar.set(self.lmenu.entrycget(0, 'label'))
+        self.LayerObjects(self.lmenu.entrycget(0, 'label'))
         try:
             lay = self.dwg.Layers('Numbers')
         except:
@@ -206,8 +266,11 @@ class main:
         lay.IsPlot = False
         
     def SetActiveLayer(self, idx):
-        self.MenuVar.set(self.menu.entrycget(idx, 'label'))
-        self.LayerObjects(self.menu.entrycget(idx, 'label'))
+        self.LayrVar.set(self.lmenu.entrycget(idx, 'label'))
+        self.LayerObjects(self.lmenu.entrycget(idx, 'label'))
+
+    def SetActiveScale(self, idx):
+        self.SclVar.set(self.smenu.entrycget(idx, 'label'))
         
     def ResetCoord(self):
         del self.PLineCrd[0:len(self.PLineCrd)]
@@ -428,14 +491,26 @@ class main:
                 lst = [float(x) for x in args[0:3]]
             return VARIANT(array("d",lst))
         
+        txthght = 1.0
+        txtshft = 0.3
+        crclrd = 0.3
+        mltplr = self.DicScales.values().index(self.SclVar.get())
+        if mltplr > 0:
+            txthght *= mltplr
+            txtshft *= mltplr
+            crclrd *= mltplr
         p1 = point(xy[0], xy[1])
-        ent = self.mspace.AddCircle(p1, 0.1)
+        ent = self.mspace.AddCircle(p1, crclrd)
         ent.Layer = lay
-        p1 = point(xy[0]+0.3, xy[1]+0.3)
+        #htch = self.mspace.AddHatch(0, 'SOLID', False)
+        #htch.AppendOuterLoop(array("i", [ent,]))
+        #htch.Evaluate()
+        #htch.Layer = lay
+        p1 = point(xy[0]+txtshft, xy[1]+txtshft)
         sh = len(num)
         if (len(self.nprefix) > 0) and (len(num.replace(self.nprefix, '')) > 3):
             sh = sh // 2
-        th = string.Template('\H1;$n')
+        th = string.Template('\H'+str(txthght)+';$n')
         ent = self.mspace.AddMText(p1, sh, th.substitute(n=num))
         ent.LineSpacingFactor = 0.7
         ent.Layer = lay
@@ -450,6 +525,10 @@ class main:
                 lst = [float(x) for x in args[0:3]]
             return VARIANT(array("d",lst))
         
+        txthght = 2.0
+        mltplr = self.DicScales.values().index(self.SclVar.get())
+        if mltplr > 0:
+            txthght *= mltplr
         NP = self.GetNordPnt(lxy)
         SP = self.GetSouthPnt(lxy)
         WP = self.GetWestPnt(lxy)
@@ -457,7 +536,7 @@ class main:
         x = (WP[0] + EP[0]) // 2
         y = (NP[1] + SP[1]) // 2
         p1 = point(x,y)
-        ent = self.mspace.AddText(num, p1, 2)
+        ent = self.mspace.AddText(num, p1, txthght)
         ent.Layer = lay
     
 root=Tk()
