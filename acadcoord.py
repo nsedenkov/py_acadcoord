@@ -19,8 +19,12 @@ if path.exists(path.normpath('d:\PY\LIB')):
     sys.path.append(path.normpath('d:\PY\LIB'))
 from Tkinter import Tk, Button, Frame, LabelFrame, Listbox, Scrollbar, Menu, Menubutton, Radiobutton, Label, Entry, StringVar, IntVar
 from Tkinter import DISABLED, NORMAL, END, LEFT
-from comtypes.client import *
-from comtypes.automation import *
+from tkMessageBox import showerror
+try:
+    from comtypes.client import *
+    from comtypes.automation import *
+except ImportError:
+    showerror(title = 'Error', message = 'Ошибка импорта comtypes!')
 from array import array
 import locale
 import string
@@ -84,6 +88,10 @@ class main:
                                 9:'1:50 000',
                                 10:'1:100 000'
                               }
+        self.DicAcadErrors = {
+                                1:'AutoCAD не запущен',
+                                2:'В AutoCAD нет открытых чертежей'
+                             }
         self.title = 'Экспорт координат объектов AutoCAD'
         self.master.title(self.title)
         self.master.geometry('360x290')
@@ -170,8 +178,11 @@ class main:
         self.master.etr2.insert(0, '1')
         self.master.etr3.insert(0, '1')
         locale.setlocale(locale.LC_NUMERIC, 'Russian_Russia')
-        self.ConnectACAD()
-        self.master.mainloop()
+        err = self.ConnectACAD()
+        if err == 0:
+            self.master.mainloop()
+        else:
+            showerror(title = 'Error', message = self.DicAcadErrors[err], parent = self.master)
         
     def GetDcmlSep(self):
         return locale.localeconv()['decimal_point']#str(bytes(str(3 / 2))[1])
@@ -250,20 +261,34 @@ class main:
         self.ToExcel()
         
     def ConnectACAD(self):
-        self.acad = GetActiveObject("AutoCAD.Application")
-        self.dwg = self.acad.ActiveDocument
-        self.mspace = self.dwg.ModelSpace
-        self.master.title(self.title+' - '+self.dwg.Name.encode('utf-8'))
-        for x in xrange(0,self.dwg.Layers.Count):
-            self.lmenu.add_command(label = self.dwg.Layers[x].Name, command = lambda x = x: self.SetActiveLayer(x))
-        self.LayrVar.set(self.lmenu.entrycget(0, 'label'))
-        self.LayerObjects(self.lmenu.entrycget(0, 'label'))
+        # errcode - возвращаемое значение
+        # 0 - все Ок
+        # 1 - AutoCAD не запущен
+        # 2 - не открыто ни одного чертежа
+        errcode = 0
         try:
-            lay = self.dwg.Layers('Numbers')
+            self.acad = GetActiveObject("AutoCAD.Application")
         except:
-            lay = self.dwg.Layers.Add('Numbers')
-        lay.Color = 253
-        lay.IsPlot = False
+            errcode = 1
+        if errcode == 0:
+            try:
+                self.dwg = self.acad.ActiveDocument
+            except:
+                errcode = 2
+        if errcode == 0:
+            self.mspace = self.dwg.ModelSpace
+            self.master.title(self.title+' - '+self.dwg.Name.encode('utf-8'))
+            for x in xrange(0,self.dwg.Layers.Count):
+                self.lmenu.add_command(label = self.dwg.Layers[x].Name, command = lambda x = x: self.SetActiveLayer(x))
+            self.LayrVar.set(self.lmenu.entrycget(0, 'label'))
+            self.LayerObjects(self.lmenu.entrycget(0, 'label'))
+            try:
+                lay = self.dwg.Layers('Numbers')
+            except:
+                lay = self.dwg.Layers.Add('Numbers')
+            lay.Color = 253
+            lay.IsPlot = False
+        return errcode
         
     def SetActiveLayer(self, idx):
         self.LayrVar.set(self.lmenu.entrycget(idx, 'label'))
@@ -539,5 +564,8 @@ class main:
         ent = self.mspace.AddText(num, p1, txthght)
         ent.Layer = lay
     
-root=Tk()
-main(root)
+if sys.platform.startswith('win'):
+    root=Tk()
+    main(root)
+else:
+    showerror(title = 'Error', message = 'Приложение разработано для платформы MS Windows!')
