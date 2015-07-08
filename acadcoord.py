@@ -187,16 +187,36 @@ class main:
     def GetDcmlSep(self):
         return locale.localeconv()['decimal_point']#str(bytes(str(3 / 2))[1])
         
-    def XlsCrdString(self, ws, row, n, x, y):
+    def XlsCrdString(self, ws, row, n, x, y, l):
+        ws.Rows[row].RowHeight = 25
         ws.Cells[row, 1] = str(n)
-        ws.Cells[row, 1].BorderAround(1,3,1,1)
+        #ws.Cells[row, 1].BorderAround(1,3,1,1)
+        ws.Cells[row, 1].Borders[1].LineStyle = 1
+        ws.Cells[row, 1].Borders[1].Weight = 3
         ws.Cells[row, 1].HorizontalAlignment = 3
+        ws.Cells[row, 1].VerticalAlignment = 1
         ws.Cells[row, 3] = '{0:10.2f}'.format(x)
-        ws.Cells[row, 3].BorderAround(1,3,1,1)
+        ws.Cells[row, 3].Borders[1].LineStyle = 1
+        ws.Cells[row, 3].Borders[1].Weight = 3
         ws.Cells[row, 3].NumberFormat = '0'+self.GetDcmlSep()+'00'
+        ws.Cells[row, 3].VerticalAlignment = 1
         ws.Cells[row, 2] = '{0:10.2f}'.format(y)
-        ws.Cells[row, 2].BorderAround(1,3,1,1)
+        ws.Cells[row, 2].Borders[1].LineStyle = 1
+        ws.Cells[row, 2].Borders[1].Weight = 3
         ws.Cells[row, 2].NumberFormat = '0'+self.GetDcmlSep()+'00'
+        ws.Cells[row, 2].VerticalAlignment = 1
+        if l > 0:
+            ws.Cells[row, 4] = '{0:10.2f}'.format(l)
+        ws.Cells[row, 4].Borders[1].LineStyle = 1
+        ws.Cells[row, 4].Borders[1].Weight = 3
+        ws.Cells[row, 4].Borders[2].LineStyle = 1
+        ws.Cells[row, 4].Borders[2].Weight = 3
+        ws.Cells[row, 4].NumberFormat = '0'+self.GetDcmlSep()+'00'
+        
+    def XlsUnderline(self, ws, row):
+        for j in xrange(1,5):
+            ws.Cells[row, j].Borders[4].LineStyle = 1
+            ws.Cells[row, j].Borders[4].Weight = 3
         
     def XlsHdrString(self, ws, row):
         st = 'Номер точки'
@@ -209,6 +229,9 @@ class main:
         st = 'Y, м'
         ws.Cells[row, 3] = st.decode('utf-8').encode('cp1251')
         ws.Cells[row, 3].BorderAround(1,3,1,1)
+        st = 'Длина, м'
+        ws.Cells[row, 4] = st.decode('utf-8').encode('cp1251')
+        ws.Cells[row, 4].BorderAround(1,3,1,1)
         return row + 1
         
     def ToExcel(self):
@@ -218,6 +241,7 @@ class main:
         S.Columns[1].ColumnWidth = 5 + len(self.nprefix)
         S.Columns[2].ColumnWidth = 10
         S.Columns[3].ColumnWidth = 10
+        S.Columns[4].ColumnWidth = 10
         xls.Visible = True
         ROW = 0
         lxy = [] # Сквозная нумерация точек
@@ -241,13 +265,22 @@ class main:
                         num = self.nprefix + str(lxy.index(txy)+self.startnumpntfrom)
                     self.MarkPoint(txy, num, 'Numbers')
                 if pxy.count(txy) == 0:
-                    self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(txy) + self.startnumpntfrom), txy[0], txy[1])
+                    #self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(txy) + self.startnumpntfrom), txy[0], txy[1])
                     pxy.append(txy)
-                    ROW += 1
                 if j == 1:
                     txy1 = txy
                 j += 1
-            self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(txy1)+self.startnumpntfrom), txy1[0], txy1[1])
+            for j in xrange(0,len(pxy)):
+                if j < len(pxy)-1:
+                    _len = self.Pifagor(pxy[j], pxy[j+1])
+                else:
+                    _len = self.Pifagor(pxy[j], txy1)
+                self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom), pxy[j][0], pxy[j][1], _len)
+                ROW += 1
+            _len = -1
+            self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(txy1)+self.startnumpntfrom), txy1[0], txy1[1], _len)
+            self.XlsUnderline(S, ROW)
+            S.Rows[ROW].RowHeight = 15
             i += 1
 
     def Quit(self):
