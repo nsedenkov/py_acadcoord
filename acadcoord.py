@@ -217,7 +217,7 @@ class main:
         ws.Cells[row, 4].Borders[1].Weight = 3
         ws.Cells[row, 4].NumberFormat = '0'+self.GetDcmlSep()+'00'
         ws.Cells[row, 4].HorizontalAlignment = 3
-        if (ang[0] >= 0) or (ang[1] >= 0) or (ang[2] >= 0):
+        if (ang[0] >= 0):
             ws.Cells[row, 5] = u'%(deg)02d° %(mnt)02d.%(dmnt)02d\'' % {'deg':ang[0], 'mnt':ang[1], 'dmnt':ang[2]}
         ws.Cells[row, 5].Borders[1].LineStyle = 1
         ws.Cells[row, 5].Borders[1].Weight = 3
