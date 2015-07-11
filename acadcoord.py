@@ -28,7 +28,8 @@ except ImportError:
 from array import array
 import locale
 import string
-from math import sqrt
+from math import sqrt, acos, degrees, trunc, fabs, modf
+#import collections
 
 class main:
 
@@ -73,7 +74,12 @@ class main:
                                   37:'',
                                   38:'',
                                   39:'',
-                                  40:''
+                                  40:'',
+                                  41:'Угловой размер',
+                                  42:'',
+                                  43:'',
+                                  44:'',
+                                  45:''
                                  }
         self.DicScales = {
                                 0:u'Черновик',
@@ -187,7 +193,7 @@ class main:
     def GetDcmlSep(self):
         return locale.localeconv()['decimal_point']#str(bytes(str(3 / 2))[1])
         
-    def XlsCrdString(self, ws, row, n, x, y, l):
+    def XlsCrdString(self, ws, row, n, x, y, l, ang):
         ws.Rows[row].RowHeight = 25
         ws.Cells[row, 1] = str(n)
         #ws.Cells[row, 1].BorderAround(1,3,1,1)
@@ -209,12 +215,18 @@ class main:
             ws.Cells[row, 4] = '{0:10.2f}'.format(l)
         ws.Cells[row, 4].Borders[1].LineStyle = 1
         ws.Cells[row, 4].Borders[1].Weight = 3
-        ws.Cells[row, 4].Borders[2].LineStyle = 1
-        ws.Cells[row, 4].Borders[2].Weight = 3
         ws.Cells[row, 4].NumberFormat = '0'+self.GetDcmlSep()+'00'
+        ws.Cells[row, 4].HorizontalAlignment = 3
+        if (ang[0] >= 0) or (ang[1] >= 0) or (ang[2] >= 0):
+            ws.Cells[row, 5] = u'%(deg)02d° %(mnt)02d.%(dmnt)02d\'' % {'deg':ang[0], 'mnt':ang[1], 'dmnt':ang[2]}
+        ws.Cells[row, 5].Borders[1].LineStyle = 1
+        ws.Cells[row, 5].Borders[1].Weight = 3
+        ws.Cells[row, 5].Borders[2].LineStyle = 1
+        ws.Cells[row, 5].Borders[2].Weight = 3
+        ws.Cells[row, 5].HorizontalAlignment = 3
         
     def XlsUnderline(self, ws, row):
-        for j in xrange(1,5):
+        for j in xrange(1,6):
             ws.Cells[row, j].Borders[4].LineStyle = 1
             ws.Cells[row, j].Borders[4].Weight = 3
         
@@ -232,6 +244,9 @@ class main:
         st = 'Длина, м'
         ws.Cells[row, 4] = st.decode('utf-8').encode('cp1251')
         ws.Cells[row, 4].BorderAround(1,3,1,1)
+        st = 'Дирекционный угол'
+        ws.Cells[row, 5] = st.decode('utf-8').encode('cp1251')
+        ws.Cells[row, 5].BorderAround(1,3,1,1)
         return row + 1
         
     def ToExcel(self):
@@ -241,7 +256,8 @@ class main:
         S.Columns[1].ColumnWidth = 5 + len(self.nprefix)
         S.Columns[2].ColumnWidth = 10
         S.Columns[3].ColumnWidth = 10
-        S.Columns[4].ColumnWidth = 10
+        S.Columns[4].ColumnWidth = 9
+        S.Columns[5].ColumnWidth = 15
         xls.Visible = True
         ROW = 0
         lxy = [] # Сквозная нумерация точек
@@ -273,12 +289,14 @@ class main:
             for j in xrange(0,len(pxy)):
                 if j < len(pxy)-1:
                     _len = self.Pifagor(pxy[j], pxy[j+1])
+                    _da = self.dir_angl(pxy[j], pxy[j+1])
                 else:
                     _len = self.Pifagor(pxy[j], txy1)
-                self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom), pxy[j][0], pxy[j][1], _len)
+                    _da = self.dir_angl(pxy[j], txy1)
+                self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom), pxy[j][0], pxy[j][1], _len, _da)
                 ROW += 1
             _len = -1
-            self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(txy1)+self.startnumpntfrom), txy1[0], txy1[1], _len)
+            self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(txy1)+self.startnumpntfrom), txy1[0], txy1[1], _len, (-1,-1,-1))
             self.XlsUnderline(S, ROW)
             S.Rows[ROW].RowHeight = 15
             i += 1
@@ -493,6 +511,16 @@ class main:
         
     def Pifagor(self, t1, t2): # на вход - два кортежа вида (x, y), на выходе float - расстояние между точками
         return sqrt((t1[0] - t2[0]) * (t1[0] - t2[0]) + (t1[1] - t2[1]) * (t1[1] - t2[1]))
+
+    def dir_angl(self, t1, t2): # на вход - два кортежа вида (x, y), на выходе кортеж вида (d, m, dm)
+        da = degrees(acos(fabs(t1[1] - t2[1]) / self.Pifagor(t1, t2)))
+        if (t1[0] < t1[0]) and (t1[1] > t2[1]): # 1 и 2 координатные четверти
+            da = 180 - da
+        elif (t1[0] > t1[0]) and (t1[1] > t2[1]):
+            da = 180 + da
+        elif (t1[0] > t1[0]) and (t1[1] < t2[1]):
+            da = 360 + da
+        return (trunc(da), trunc(modf(da)[0] * 60), trunc((modf(da)[0] * 60 -  modf(modf(da)[0] * 60)[1]) * 100 ))
         
     def GetNordPnt(self, crdlst):
         # crdlst - список кортежей вида (X, Y)
@@ -527,7 +555,7 @@ class main:
         self.master.entitys.delete(0, END)
         self.master.btn1.configure(state = DISABLED)
         self.ResetCoord()
-        ocnt = [0]*41
+        ocnt = [0]*45
         for entity in self.mspace:
             if entity.Layer == LName:
                 ocnt[entity.EntityType] += 1
@@ -540,7 +568,24 @@ class main:
             self.master.btn1.configure(state = NORMAL)
             
     def MarkPoint(self, xy, num, lay):
+
+        '''
+        http://stackoverflow.com/questions/10166064/python-win32com-and-2-dimensional-arrays
         
+        # Попытка передать variant([ent,]) в AppendOuterLoop вызывает ComTypeError
+
+        import collections
+
+        def variant(data):
+            return VARIANT(VT_VARIANT, data)
+
+        def vararr(*data):
+            if (  len(data) == 1 and 
+                  isinstance(data, collections.Iterable) ):
+                data = data[0]
+            return map(variant, data)
+        '''
+   
         def point(*args):
             lst = [0.]*3
             if len(args) < 3:
@@ -560,8 +605,9 @@ class main:
         p1 = point(xy[0], xy[1])
         ent = self.mspace.AddCircle(p1, crclrd)
         ent.Layer = lay
+        #print(ent.Handle)
         #htch = self.mspace.AddHatch(0, 'SOLID', False)
-        #htch.AppendOuterLoop(array("i", [ent,]))
+        #htch.AppendOuterLoop(vararr([int(ent.Handle, 16),])))
         #htch.Evaluate()
         #htch.Layer = lay
         p1 = point(xy[0]+txtshft, xy[1]+txtshft)
