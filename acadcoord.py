@@ -94,6 +94,10 @@ class main:
                                 9:'1:50 000',
                                 10:'1:100 000'
                               }
+        self.DicReports = {
+                                 0:u'Ведомость ППТ',
+                                 1:u'Ведомость ПМТ'
+                                }
         self.DicAcadErrors = {
                                 1:'AutoCAD не запущен',
                                 2:'В AutoCAD нет открытых чертежей'
@@ -104,6 +108,7 @@ class main:
         self.master.resizable(False, False)
         self.LayrVar = StringVar()
         self.SclVar = StringVar()
+        self.RepVar = StringVar()
         self.RBVar = IntVar()
         self.RBVar.set(1)
         self.PLineCrd = []
@@ -126,9 +131,10 @@ class main:
         self.master.frame5.pack(side = 'top', fill = 'x', expand = 0)
         self.master.frame6 = LabelFrame(self.master.RFrame, height = 80, labelanchor='nw', text='Надписи для масштаба:')
         self.master.frame6.pack(side = 'bottom', fill = 'x', expand = 0, padx=2)
+        self.master.frame7 = LabelFrame(self.master.RFrame, height = 80, labelanchor='nw', text='Вид ведомости:')
+        self.master.frame7.pack(side = 'bottom', fill = 'x', expand = 0, padx=2)
 
-        self.master.scrl=Scrollbar(self.master.frame2)
-        self.master.entitys = Listbox(self.master.frame2, yscrollcommand=(self.master.scrl, 'set'))
+        #self.master.entitys = Listbox(self.master.frame2, yscrollcommand=(self.master.scrl, 'set'))
 
         self.master.layers = Menubutton(self.master.frame1, indicatoron = 1, anchor = 'w', textvariable = self.LayrVar)
         self.lmenu = Menu(self.master.layers, tearoff = 0, bg = 'white')
@@ -141,14 +147,24 @@ class main:
         for x in xrange(0,len(self.DicScales)):
             self.smenu.add_command(label = self.DicScales[x], command = lambda x = x: self.SetActiveScale(x))
         self.SclVar.set(self.smenu.entrycget(0, 'label'))
+        
+        self.master.reports = Menubutton(self.master.frame7, indicatoron = 1, anchor = 'w', textvariable = self.RepVar)
+        self.rmenu = Menu(self.master.reports, tearoff = 0, bg = 'white')
+        self.master.reports.configure(menu = self.rmenu)
+        self.master.reports.pack(side=LEFT, expand = 1, fill='x')
+        for x in xrange(0,len(self.DicReports)):
+            self.rmenu.add_command(label = self.DicReports[x], command = lambda x = x: self.SetActiveReport(x))
+        self.RepVar.set(self.rmenu.entrycget(0, 'label'))
+        
         self.master.btn1 = Button(self.master.frame3, width = 16, height = 1, text = 'Экспорт', state=DISABLED, command=self.btn1_press)
         self.master.btn2 = Button(self.master.frame3, width = 16, height = 1, text = 'Закрыть', command=self.Quit)
         self.master.btn1.pack(anchor = 'n', side = 'left', padx = 2, pady = 2, expand = 1)
         self.master.btn2.pack(anchor = 'n', side = 'right', padx = 2, pady = 2, expand = 1)
+        self.master.scrl=Scrollbar(self.master.frame2)
+        self.master.entitys = Listbox(self.master.frame2, height = 9, yscrollcommand=(self.master.scrl, 'set'))
         self.master.scrl.configure(command = self.master.entitys.yview)
         self.master.scrl.pack(side = 'right', fill = 'y', pady = 1)
-        self.master.entitys = Listbox(self.master.frame2, yscrollcommand=(self.master.scrl, 'set'))
-        self.master.entitys.pack(side = 'top', fill = 'both', expand = 1)
+        self.master.entitys.pack(side = 'top', fill = 'x', expand = 1)
         self.master.sf1=Frame(self.master.frame4)
         self.master.sf2=Frame(self.master.frame4)
         self.master.sf3=Frame(self.master.frame4)
@@ -193,44 +209,55 @@ class main:
     def GetDcmlSep(self):
         return locale.localeconv()['decimal_point']#str(bytes(str(3 / 2))[1])
         
-    def XlsCrdString(self, ws, row, n, x, y, l, ang):
-        ws.Rows[row].RowHeight = 25
-        ws.Cells[row, 1] = str(n)
-        #ws.Cells[row, 1].BorderAround(1,3,1,1)
-        ws.Cells[row, 1].Borders[1].LineStyle = 1
-        ws.Cells[row, 1].Borders[1].Weight = 3
-        ws.Cells[row, 1].HorizontalAlignment = 3
-        ws.Cells[row, 1].VerticalAlignment = 1
-        ws.Cells[row, 3] = '{0:10.2f}'.format(x)
-        ws.Cells[row, 3].Borders[1].LineStyle = 1
-        ws.Cells[row, 3].Borders[1].Weight = 3
-        ws.Cells[row, 3].NumberFormat = '0'+self.GetDcmlSep()+'00'
-        ws.Cells[row, 3].VerticalAlignment = 1
-        ws.Cells[row, 2] = '{0:10.2f}'.format(y)
-        ws.Cells[row, 2].Borders[1].LineStyle = 1
-        ws.Cells[row, 2].Borders[1].Weight = 3
-        ws.Cells[row, 2].NumberFormat = '0'+self.GetDcmlSep()+'00'
-        ws.Cells[row, 2].VerticalAlignment = 1
-        if l > 0:
-            ws.Cells[row, 4] = '{0:10.2f}'.format(l)
-        ws.Cells[row, 4].Borders[1].LineStyle = 1
-        ws.Cells[row, 4].Borders[1].Weight = 3
-        ws.Cells[row, 4].NumberFormat = '0'+self.GetDcmlSep()+'00'
-        ws.Cells[row, 4].HorizontalAlignment = 3
-        if (ang[0] >= 0):
-            ws.Cells[row, 5] = u'%(deg)02d° %(mnt)02d.%(dmnt)02d\'' % {'deg':ang[0], 'mnt':ang[1], 'dmnt':ang[2]}
-        ws.Cells[row, 5].Borders[1].LineStyle = 1
-        ws.Cells[row, 5].Borders[1].Weight = 3
-        ws.Cells[row, 5].Borders[2].LineStyle = 1
-        ws.Cells[row, 5].Borders[2].Weight = 3
-        ws.Cells[row, 5].HorizontalAlignment = 3
+    def XlsCrdString(self, ws, row, mode, n, x, y, l, ang):
+        if mode == 0:
+            ws.Rows[row].RowHeight = 25
+            ws.Cells[row, 1] = str(n)
+            ws.Cells[row, 1].Borders[1].LineStyle = 1
+            ws.Cells[row, 1].Borders[1].Weight = 3
+            ws.Cells[row, 1].HorizontalAlignment = 3
+            ws.Cells[row, 1].VerticalAlignment = 1
+            ws.Cells[row, 3] = '{0:10.2f}'.format(x)
+            ws.Cells[row, 3].Borders[1].LineStyle = 1
+            ws.Cells[row, 3].Borders[1].Weight = 3
+            ws.Cells[row, 3].NumberFormat = '0'+self.GetDcmlSep()+'00'
+            ws.Cells[row, 3].VerticalAlignment = 1
+            ws.Cells[row, 2] = '{0:10.2f}'.format(y)
+            ws.Cells[row, 2].Borders[1].LineStyle = 1
+            ws.Cells[row, 2].Borders[1].Weight = 3
+            ws.Cells[row, 2].NumberFormat = '0'+self.GetDcmlSep()+'00'
+            ws.Cells[row, 2].VerticalAlignment = 1
+            if l > 0:
+                ws.Cells[row, 4] = '{0:10.2f}'.format(l)
+            ws.Cells[row, 4].Borders[1].LineStyle = 1
+            ws.Cells[row, 4].Borders[1].Weight = 3
+            ws.Cells[row, 4].NumberFormat = '0'+self.GetDcmlSep()+'00'
+            ws.Cells[row, 4].HorizontalAlignment = 3
+            if (ang[0] >= 0) or (ang[1] >= 0) or (ang[2] >= 0):
+                ws.Cells[row, 5] = u'%(deg)02d° %(mnt)02d.%(dmnt)02d\'' % {'deg':ang[0], 'mnt':ang[1], 'dmnt':ang[2]}
+            ws.Cells[row, 5].Borders[1].LineStyle = 1
+            ws.Cells[row, 5].Borders[1].Weight = 3
+            ws.Cells[row, 5].Borders[2].LineStyle = 1
+            ws.Cells[row, 5].Borders[2].Weight = 3
+            ws.Cells[row, 5].HorizontalAlignment = 3
+        elif mode == 1:
+            ws.Cells[row, 1] = str(n)
+            ws.Cells[row, 1].BorderAround(1,3,1,1)
+            ws.Cells[row, 1].HorizontalAlignment = 3
+            ws.Cells[row, 3] = '{0:10.2f}'.format(x)
+            ws.Cells[row, 3].BorderAround(1,3,1,1)
+            ws.Cells[row, 3].NumberFormat = '0'+self.GetDcmlSep()+'00'
+            ws.Cells[row, 2] = '{0:10.2f}'.format(y)
+            ws.Cells[row, 2].BorderAround(1,3,1,1)
+            ws.Cells[row, 2].NumberFormat = '0'+self.GetDcmlSep()+'00'
         
     def XlsUnderline(self, ws, row):
         for j in xrange(1,6):
             ws.Cells[row, j].Borders[4].LineStyle = 1
             ws.Cells[row, j].Borders[4].Weight = 3
+            ws.Rows[row].RowHeight = 15
         
-    def XlsHdrString(self, ws, row):
+    def XlsHdrString(self, ws, row, mode):
         st = 'Номер точки'
         ws.Cells[row, 1] = st.decode('utf-8').encode('cp1251')
         ws.Cells[row, 1].BorderAround(1,3,1,1)
@@ -241,12 +268,13 @@ class main:
         st = 'Y, м'
         ws.Cells[row, 3] = st.decode('utf-8').encode('cp1251')
         ws.Cells[row, 3].BorderAround(1,3,1,1)
-        st = 'Длина, м'
-        ws.Cells[row, 4] = st.decode('utf-8').encode('cp1251')
-        ws.Cells[row, 4].BorderAround(1,3,1,1)
-        st = 'Дирекционный угол'
-        ws.Cells[row, 5] = st.decode('utf-8').encode('cp1251')
-        ws.Cells[row, 5].BorderAround(1,3,1,1)
+        if mode == 0:
+            st = 'Длина, м'
+            ws.Cells[row, 4] = st.decode('utf-8').encode('cp1251')
+            ws.Cells[row, 4].BorderAround(1,3,1,1)
+            st = 'Дирекционный угол'
+            ws.Cells[row, 5] = st.decode('utf-8').encode('cp1251')
+            ws.Cells[row, 5].BorderAround(1,3,1,1)
         return row + 1
         
     def ToExcel(self):
@@ -269,7 +297,7 @@ class main:
             S.Cells[ROW, 1] = st.decode('utf-8').encode('cp1251') + self.nprefix + str(i + self.startnumprclfrom - 1)
             self.MarkParcel(crdlst, self.nprefix + str(i + self.startnumprclfrom - 1), 'Numbers')
             ROW += 1
-            ROW = self.XlsHdrString(S, ROW)
+            ROW = self.XlsHdrString(S, ROW,  self.DicReports.values().index(self.RepVar.get()))
             del pxy[0:len(pxy)]
             j = 1
             for txy in crdlst:
@@ -293,12 +321,12 @@ class main:
                 else:
                     _len = self.Pifagor(pxy[j], txy1)
                     _da = self.dir_angl(pxy[j], txy1)
-                self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom), pxy[j][0], pxy[j][1], _len, _da)
+                self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()), self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom), pxy[j][0], pxy[j][1], _len, _da)
                 ROW += 1
             _len = -1
-            self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(txy1)+self.startnumpntfrom), txy1[0], txy1[1], _len, (-1,-1,-1))
-            self.XlsUnderline(S, ROW)
-            S.Rows[ROW].RowHeight = 15
+            self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()), self.nprefix + str(lxy.index(txy1)+self.startnumpntfrom), txy1[0], txy1[1], _len, (-1,-1,-1))
+            if self.DicReports.values().index(self.RepVar.get()) == 0:
+                self.XlsUnderline(S, ROW)
             i += 1
 
     def Quit(self):
@@ -347,6 +375,9 @@ class main:
 
     def SetActiveScale(self, idx):
         self.SclVar.set(self.smenu.entrycget(idx, 'label'))
+
+    def SetActiveReport(self, idx):
+        self.RepVar.set(self.rmenu.entrycget(idx, 'label'))
         
     def ResetCoord(self):
         del self.PLineCrd[0:len(self.PLineCrd)]
@@ -514,12 +545,12 @@ class main:
 
     def dir_angl(self, t1, t2): # на вход - два кортежа вида (x, y), на выходе кортеж вида (d, m, dm)
         da = degrees(acos(fabs(t1[1] - t2[1]) / self.Pifagor(t1, t2)))
-        if (t1[0] < t1[0]) and (t1[1] > t2[1]): # 1 и 2 координатные четверти
-            da = 180 - da
-        elif (t1[0] > t1[0]) and (t1[1] > t2[1]):
+        if (t1[0] < t2[0]) and (t1[1] > t2[1]): # 2 координатная четверть
+           da = 180 - da
+        elif (t1[0] > t2[0]) and (t1[1] > t2[1]): # 3 координатная четверть
             da = 180 + da
-        elif (t1[0] > t1[0]) and (t1[1] < t2[1]):
-            da = 360 + da
+        elif (t1[0] > t2[0]) and (t1[1] < t2[1]): # 4 координатная четверть
+            da = 360 - da
         return (trunc(da), trunc(modf(da)[0] * 60), trunc((modf(da)[0] * 60 -  modf(modf(da)[0] * 60)[1]) * 100 ))
         
     def GetNordPnt(self, crdlst):
