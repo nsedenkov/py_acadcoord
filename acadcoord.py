@@ -95,8 +95,9 @@ class main:
                                 10:'1:100 000'
                               }
         self.DicReports = {
-                                 0:u'Ведомость ППТ',
-                                 1:u'Ведомость ПМТ'
+                                 0:u'Классическая (№ - X - Y - Длина - Угол)',
+                                 1:u'Сокращенная (№ - X - Y)',
+                                 2:u'По РДС 30-201-98'
                                 }
         self.DicAcadErrors = {
                                 1:'AutoCAD не запущен',
@@ -133,8 +134,6 @@ class main:
         self.master.frame6.pack(side = 'bottom', fill = 'x', expand = 0, padx=2)
         self.master.frame7 = LabelFrame(self.master.RFrame, height = 80, labelanchor='nw', text='Вид ведомости:')
         self.master.frame7.pack(side = 'bottom', fill = 'x', expand = 0, padx=2)
-
-        #self.master.entitys = Listbox(self.master.frame2, yscrollcommand=(self.master.scrl, 'set'))
 
         self.master.layers = Menubutton(self.master.frame1, indicatoron = 1, anchor = 'w', textvariable = self.LayrVar)
         self.lmenu = Menu(self.master.layers, tearoff = 0, bg = 'white')
@@ -209,20 +208,28 @@ class main:
     def GetDcmlSep(self):
         return locale.localeconv()['decimal_point']#str(bytes(str(3 / 2))[1])
         
-    def XlsCrdString(self, ws, row, mode, n, x, y, l, ang):
+    def XlsCrdString(self, ws, row, mode, nmb, cxy, pxy, l, ang):
+        # ws - объект worksheet
+        # row - номер строки
+        # mode - вид ведомости
+        # nmb - кортеж вида (i, i) - номера точек
+        # cxy - кортеж вида (f, f) - координаты текущей точки
+        # pxy - кортеж вида (f, f) - координаты предыдущей точки
+        # l - длина
+        # ang - кортеж вида (d, m.mm) - дирекционный угол
         if mode == 0:
             ws.Rows[row].RowHeight = 25
-            ws.Cells[row, 1] = str(n)
+            ws.Cells[row, 1] = str(nmb[0])
             ws.Cells[row, 1].Borders[1].LineStyle = 1
             ws.Cells[row, 1].Borders[1].Weight = 3
             ws.Cells[row, 1].HorizontalAlignment = 3
             ws.Cells[row, 1].VerticalAlignment = 1
-            ws.Cells[row, 3] = '{0:10.2f}'.format(x)
+            ws.Cells[row, 3] = '{0:10.2f}'.format(cxy[0])
             ws.Cells[row, 3].Borders[1].LineStyle = 1
             ws.Cells[row, 3].Borders[1].Weight = 3
             ws.Cells[row, 3].NumberFormat = '0'+self.GetDcmlSep()+'00'
             ws.Cells[row, 3].VerticalAlignment = 1
-            ws.Cells[row, 2] = '{0:10.2f}'.format(y)
+            ws.Cells[row, 2] = '{0:10.2f}'.format(cxy[1])
             ws.Cells[row, 2].Borders[1].LineStyle = 1
             ws.Cells[row, 2].Borders[1].Weight = 3
             ws.Cells[row, 2].NumberFormat = '0'+self.GetDcmlSep()+'00'
@@ -233,23 +240,89 @@ class main:
             ws.Cells[row, 4].Borders[1].Weight = 3
             ws.Cells[row, 4].NumberFormat = '0'+self.GetDcmlSep()+'00'
             ws.Cells[row, 4].HorizontalAlignment = 3
-            if (ang[0] >= 0) or (ang[1] >= 0) or (ang[2] >= 0):
+            if (ang[0] >= 0) and (ang[1] >= 0) and (ang[2] >= 0):
                 ws.Cells[row, 5] = u'%(deg)02d° %(mnt)02d.%(dmnt)02d\'' % {'deg':ang[0], 'mnt':ang[1], 'dmnt':ang[2]}
             ws.Cells[row, 5].Borders[1].LineStyle = 1
             ws.Cells[row, 5].Borders[1].Weight = 3
             ws.Cells[row, 5].Borders[2].LineStyle = 1
             ws.Cells[row, 5].Borders[2].Weight = 3
             ws.Cells[row, 5].HorizontalAlignment = 3
+            return row + 1
         elif mode == 1:
-            ws.Cells[row, 1] = str(n)
+            ws.Cells[row, 1] = str(nmb[0])
             ws.Cells[row, 1].BorderAround(1,3,1,1)
             ws.Cells[row, 1].HorizontalAlignment = 3
-            ws.Cells[row, 3] = '{0:10.2f}'.format(x)
+            ws.Cells[row, 3] = '{0:10.2f}'.format(cxy[0])
             ws.Cells[row, 3].BorderAround(1,3,1,1)
             ws.Cells[row, 3].NumberFormat = '0'+self.GetDcmlSep()+'00'
-            ws.Cells[row, 2] = '{0:10.2f}'.format(y)
+            ws.Cells[row, 2] = '{0:10.2f}'.format(cxy[1])
             ws.Cells[row, 2].BorderAround(1,3,1,1)
             ws.Cells[row, 2].NumberFormat = '0'+self.GetDcmlSep()+'00'
+            return row + 1
+        elif mode == 2:
+            ws.Cells[row, 1] = str(nmb[0])
+            ws.Cells[row, 1].Borders[1].LineStyle = 1
+            ws.Cells[row, 1].Borders[1].Weight = 3
+            ws.Cells[row, 1].Borders[2].LineStyle = 1
+            ws.Cells[row, 1].Borders[2].Weight = 3
+            ws.Cells[row, 1].HorizontalAlignment = 3
+            ws.Cells[row, 4] = 'X='
+            ws.Cells[row, 4].HorizontalAlignment = 3
+            ws.Cells[row, 5] = '{0:10.2f}'.format(cxy[0])
+            ws.Cells[row, 5].NumberFormat = '0'+self.GetDcmlSep()+'00'
+            ws.Cells[row, 6] = 'Y='
+            ws.Cells[row, 6].HorizontalAlignment = 3
+            ws.Cells[row, 7] = '{0:10.2f}'.format(cxy[1])
+            ws.Cells[row, 7].NumberFormat = '0'+self.GetDcmlSep()+'00'
+            ws.Cells[row, 7].Borders[2].LineStyle = 1
+            ws.Cells[row, 7].Borders[2].Weight = 3
+            if l >= 0:
+                for i in xrange(1,5):
+                    ws.Cells[row+i, 1].Borders[1].LineStyle = 1
+                    ws.Cells[row+i, 1].Borders[1].Weight = 3
+                    ws.Cells[row+i, 1].Borders[2].LineStyle = 1
+                    ws.Cells[row+i, 1].Borders[2].Weight = 3
+                    ws.Cells[row+i, 7].Borders[2].LineStyle = 1
+                    ws.Cells[row+i, 7].Borders[2].Weight = 3
+                for i in xrange(1,8):
+                    ws.Cells[row+4, i].Borders[4].LineStyle = 1
+                    ws.Cells[row+4, i].Borders[4].Weight = 3
+                st = u'элемент'
+                ws.Cells[row+1, 2] = st.encode('cp1251')
+                ws.Cells[row+1, 2].HorizontalAlignment = 2
+                st = u'прямая'
+                ws.Cells[row+1, 3] = st.encode('cp1251')
+                ws.Cells[row+1, 3].HorizontalAlignment = 2
+                st = u'дирекционное направление'
+                ws.Cells[row+2, 2] = st.encode('cp1251')
+                ws.Cells[row+2, 2].HorizontalAlignment = 2
+                ws.Cells[row+2, 3] = u'%(deg)02d° %(mnt)02d\' %(dmnt)02d\"' % {'deg':ang[0], 'mnt':ang[1], 'dmnt':ang[2]/100*60}
+                ws.Cells[row+2, 3].HorizontalAlignment = 2
+                st = u'расстояние'
+                ws.Cells[row+3, 2] = st.encode('cp1251')
+                ws.Cells[row+3, 2].HorizontalAlignment = 2
+                ws.Cells[row+3, 3] = '{0:10.2f}'.format(l)
+                ws.Cells[row+3, 3].HorizontalAlignment = 2
+                st = u'точка'
+                ws.Cells[row+4, 2] = st.encode('cp1251')
+                ws.Cells[row+4, 2].HorizontalAlignment = 2
+                ws.Cells[row+4, 3] = nmb[1]
+                ws.Cells[row+4, 3].HorizontalAlignment = 2
+                ws.Cells[row+4, 4] = 'X='
+                ws.Cells[row+4, 4].HorizontalAlignment = 3
+                ws.Cells[row+4, 5] = '{0:10.2f}'.format(pxy[0])
+                ws.Cells[row+4, 5].NumberFormat = '0'+self.GetDcmlSep()+'00'
+                ws.Cells[row+4, 6] = 'Y='
+                ws.Cells[row+4, 6].HorizontalAlignment = 3
+                ws.Cells[row+4, 7] = '{0:10.2f}'.format(pxy[1])
+                ws.Cells[row+4, 7].NumberFormat = '0'+self.GetDcmlSep()+'00'
+                return row + 5
+            else:
+                for i in xrange(1,8):
+                    ws.Cells[row, i].Borders[4].LineStyle = 1
+                    ws.Cells[row, i].Borders[4].Weight = 3
+                return row + 1
+                
         
     def XlsUnderline(self, ws, row):
         for j in xrange(1,6):
@@ -258,39 +331,85 @@ class main:
             ws.Rows[row].RowHeight = 15
         
     def XlsHdrString(self, ws, row, mode):
-        st = 'Номер точки'
-        ws.Cells[row, 1] = st.decode('utf-8').encode('cp1251')
-        ws.Cells[row, 1].BorderAround(1,3,1,1)
-        ws.Cells[row, 1].HorizontalAlignment = 3
-        st = 'X, м'
-        ws.Cells[row, 2] = st.decode('utf-8').encode('cp1251')
-        ws.Cells[row, 2].BorderAround(1,3,1,1)
-        st = 'Y, м'
-        ws.Cells[row, 3] = st.decode('utf-8').encode('cp1251')
-        ws.Cells[row, 3].BorderAround(1,3,1,1)
-        if mode == 0:
-            st = 'Длина, м'
-            ws.Cells[row, 4] = st.decode('utf-8').encode('cp1251')
-            ws.Cells[row, 4].BorderAround(1,3,1,1)
-            st = 'Дирекционный угол'
-            ws.Cells[row, 5] = st.decode('utf-8').encode('cp1251')
-            ws.Cells[row, 5].BorderAround(1,3,1,1)
+        if mode < 2:
+            st = u'Номер точки'
+            ws.Cells[row, 1] = st.encode('cp1251')
+            ws.Cells[row, 1].BorderAround(1,3,1,1)
+            ws.Cells[row, 1].HorizontalAlignment = 3
+            st = u'X, м'
+            ws.Cells[row, 2] = st.encode('cp1251')
+            ws.Cells[row, 2].BorderAround(1,3,1,1)
+            st = u'Y, м'
+            ws.Cells[row, 3] = st.encode('cp1251')
+            ws.Cells[row, 3].BorderAround(1,3,1,1)
+            if mode == 0:
+                st = u'Длина, м'
+                ws.Cells[row, 4] = st.encode('cp1251')
+                ws.Cells[row, 4].BorderAround(1,3,1,1)
+                st = u'Дирекционный угол'
+                ws.Cells[row, 5] = st.encode('cp1251')
+                ws.Cells[row, 5].BorderAround(1,3,1,1)
+        elif mode == 2:
+            st = u'№ точки'
+            ws.Cells[row, 1] = st.encode('cp1251')
+            ws.Cells[row, 1].BorderAround(1,3,1,1)
+            ws.Cells[row, 1].HorizontalAlignment = 3
+            ws.Cells[row, 2].Borders[3].LineStyle = 1
+            ws.Cells[row, 2].Borders[3].Weight = 3
+            ws.Cells[row, 2].Borders[4].LineStyle = 1
+            ws.Cells[row, 2].Borders[4].Weight = 3
+            ws.Cells[row, 3].Borders[3].LineStyle = 1
+            ws.Cells[row, 3].Borders[3].Weight = 3
+            ws.Cells[row, 3].Borders[4].LineStyle = 1
+            ws.Cells[row, 3].Borders[4].Weight = 3
+            ws.Cells[row, 4].Borders[3].LineStyle = 1
+            ws.Cells[row, 4].Borders[3].Weight = 3
+            ws.Cells[row, 4].Borders[4].LineStyle = 1
+            ws.Cells[row, 4].Borders[4].Weight = 3
+            ws.Cells[row, 5].Borders[3].LineStyle = 1
+            ws.Cells[row, 5].Borders[3].Weight = 3
+            ws.Cells[row, 5].Borders[4].LineStyle = 1
+            ws.Cells[row, 5].Borders[4].Weight = 3
+            ws.Cells[row, 6].Borders[3].LineStyle = 1
+            ws.Cells[row, 6].Borders[3].Weight = 3
+            ws.Cells[row, 6].Borders[4].LineStyle = 1
+            ws.Cells[row, 6].Borders[4].Weight = 3
+            ws.Cells[row, 7].Borders[3].LineStyle = 1
+            ws.Cells[row, 7].Borders[3].Weight = 3
+            ws.Cells[row, 7].Borders[4].LineStyle = 1
+            ws.Cells[row, 7].Borders[4].Weight = 3
+            ws.Cells[row, 7].Borders[2].LineStyle = 1
+            ws.Cells[row, 7].Borders[2].Weight = 3
         return row + 1
         
     def ToExcel(self):
         xls = CreateObject("Excel.Application")
         xls.WorkBooks.Add()
         S = xls.WorkBooks[1].WorkSheets[1]
-        S.Columns[1].ColumnWidth = 5 + len(self.nprefix)
-        S.Columns[2].ColumnWidth = 10
-        S.Columns[3].ColumnWidth = 10
-        S.Columns[4].ColumnWidth = 9
-        S.Columns[5].ColumnWidth = 15
+        if self.DicReports.values().index(self.RepVar.get()) < 2:
+            S.Columns[1].ColumnWidth = 5 + len(self.nprefix)
+            S.Columns[2].ColumnWidth = 10
+            S.Columns[3].ColumnWidth = 10
+            if self.DicReports.values().index(self.RepVar.get()) == 0:
+                S.Columns[4].ColumnWidth = 9
+                S.Columns[5].ColumnWidth = 15
+        elif self.DicReports.values().index(self.RepVar.get()) == 2:
+            S.Columns[1].ColumnWidth = 10 + len(self.nprefix)
+            S.Columns[2].ColumnWidth = 30
+            S.Columns[3].ColumnWidth = 10
+            S.Columns[4].ColumnWidth = 3
+            S.Columns[5].ColumnWidth = 10
+            S.Columns[6].ColumnWidth = 3
+            S.Columns[7].ColumnWidth = 10
         xls.Visible = True
         ROW = 0
+        if self.DicReports.values().index(self.RepVar.get()) == 2:
+            ROW += 1
+            st = u'ВЕДОМОСТЬ КООРДИНАТ ТОЧЕК ГРАНИЦЫ ТЕХНИЧЕСКОЙ ЗОНЫ ЛИНЕЙНОГО ОБЪЕКТА'
+            S.Cells[ROW, 1] = st.encode('cp1251')
         lxy = [] # Сквозная нумерация точек
         pxy = [] # Список точек внутри участка для исключения дублирования строк в ведомости
-        i = 1
+        i = 1 # Порядковый номер участка
         for crdlst in self.PLineCrd:
             ROW += 1
             st = 'Участок '
@@ -309,24 +428,33 @@ class main:
                         num = self.nprefix + str(lxy.index(txy)+self.startnumpntfrom)
                     self.MarkPoint(txy, num, 'Numbers')
                 if pxy.count(txy) == 0:
-                    #self.XlsCrdString(S, ROW, self.nprefix + str(lxy.index(txy) + self.startnumpntfrom), txy[0], txy[1])
                     pxy.append(txy)
                 if j == 1:
                     txy1 = txy
                 j += 1
-            for j in xrange(0,len(pxy)):
-                if j < len(pxy)-1:
-                    _len = self.Pifagor(pxy[j], pxy[j+1])
-                    _da = self.dir_angl(pxy[j], pxy[j+1])
-                else:
-                    _len = self.Pifagor(pxy[j], txy1)
-                    _da = self.dir_angl(pxy[j], txy1)
-                self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()), self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom), pxy[j][0], pxy[j][1], _len, _da)
-                ROW += 1
-            _len = -1
-            self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()), self.nprefix + str(lxy.index(txy1)+self.startnumpntfrom), txy1[0], txy1[1], _len, (-1,-1,-1))
-            if self.DicReports.values().index(self.RepVar.get()) == 0:
-                self.XlsUnderline(S, ROW)
+            if self.DicReports.values().index(self.RepVar.get()) < 2:
+                for j in xrange(0,len(pxy)):
+                    if j < len(pxy)-1:
+                        _len = self.Pifagor(pxy[j], pxy[j+1])
+                        _da = self.dir_angl(pxy[j], pxy[j+1])
+                    else:
+                        _len = self.Pifagor(pxy[j], txy1)
+                        _da = self.dir_angl(pxy[j], txy1)
+                    ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()), (self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom), '-'), (pxy[j][0], pxy[j][1]), (-1, -1), _len, _da)
+                _len = -1
+                ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()), (self.nprefix + str(lxy.index(txy1)+self.startnumpntfrom), '-'), (txy1[0], txy1[1]), (-1, -1), _len, (-1,-1,-1))
+                if self.DicReports.values().index(self.RepVar.get()) == 0:
+                    self.XlsUnderline(S, ROW-1)
+            elif self.DicReports.values().index(self.RepVar.get()) == 2:
+                for j in xrange(0,len(pxy)):
+                    if j == 0:
+                        _len = -1
+                        _da = (-1,-1,-1)
+                    else:
+                        _len = self.Pifagor(txy1, pxy[j])
+                        _da = self.dir_angl(txy1, pxy[j])
+                    ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()), (self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom), self.nprefix + str(lxy.index(txy1) + self.startnumpntfrom)), (pxy[j][0], pxy[j][1]), txy1, _len, _da)
+                    txy1 = pxy[j]
             i += 1
 
     def Quit(self):
@@ -547,9 +675,9 @@ class main:
         da = degrees(acos(fabs(t1[1] - t2[1]) / self.Pifagor(t1, t2)))
         if (t1[0] < t2[0]) and (t1[1] > t2[1]): # 2 координатная четверть
            da = 180 - da
-        elif (t1[0] > t2[0]) and (t1[1] > t2[1]): # 3 координатная четверть
+        elif (t1[0] >= t2[0]) and (t1[1] >= t2[1]): # 3 координатная четверть
             da = 180 + da
-        elif (t1[0] > t2[0]) and (t1[1] < t2[1]): # 4 координатная четверть
+        elif (t1[0] > t2[0]) and (t1[1] <= t2[1]): # 4 координатная четверть
             da = 360 - da
         return (trunc(da), trunc(modf(da)[0] * 60), trunc((modf(da)[0] * 60 -  modf(modf(da)[0] * 60)[1]) * 100 ))
         
