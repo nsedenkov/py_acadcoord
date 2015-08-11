@@ -6,7 +6,8 @@
 #   Экспортирует в Excel координаты объектов Polyline и 2DPolyline из указанного слоя
 #   активного чертежа AutoCAD
 #   В модели в слое Numbers проставляет номера точек (если слоя нет, он будет создан),
-#   а также номера контуров
+#   а также номера и площади контуров (площади рассчитываются по координатам точек,
+#   округленным до 2 знака)
 #
 #===============================================================================
 
@@ -528,9 +529,18 @@ class main:
         for j in xrange(0,len(crdx)):
             txy = (round(crdx[j],2), round(crdy[j],2))
             tmplst.append(txy)
-        dic_pl['sq'] = sq # пока заглушка
+        dic_pl['sq'] = self.area(tmplst)
         dic_pl['crd'] = tmplst
         self.PLineCrd.append(dic_pl)
+        
+    def area(self, lxy):
+        area = 0
+        args = lxy
+        for i in xrange(len(args)):
+            x1, y1 = args[i - 1]
+            x2, y2 = args[i]
+            area += x1*y2 - x2*y1
+        return fabs(area / 2)
         
     def SwapPntLst(self, lst, dir):
         reslst = {}
@@ -787,6 +797,10 @@ class main:
             else:
                 lst = [float(x) for x in args[0:3]]
             return VARIANT(array("d",lst))
+            
+        def points(*args):
+            lst = [float(x) for x in args[0:len(args)]]
+            return VARIANT(array('d',lst))
         
         txthght = 2.0
         mltplr = self.DicScales.values().index(self.SclVar.get())
@@ -798,13 +812,15 @@ class main:
         EP = self.GetEastPnt(lxy['crd'])
         x = (WP[0] + EP[0]) // 2
         y = (NP[1] + SP[1]) // 2
-        p1 = point(x,y+txthght)
+        p1 = point(x,y+txthght / 3)
         ent = self.mspace.AddText(num, p1, txthght)
         ent.Layer = lay
-        p1 = point(x,y-txthght)
+        p1 = point(x,y-txthght-txthght / 3)
         s1 = str(trunc(lxy['sq']))
         s2 = '{0:'+str(len(s1))+'.0f}'
         ent = self.mspace.AddText(s2.format(lxy['sq']), p1, txthght)
+        ent.Layer = lay
+        ent = self.mspace.AddPolyline(points(x,y,0.0,x+len(s1)*txthght,y,0.0))
         ent.Layer = lay
     
 if sys.platform.startswith('win'):
