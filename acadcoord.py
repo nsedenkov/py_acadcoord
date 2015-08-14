@@ -478,7 +478,7 @@ class main:
                 errcode = 2
         if errcode == 0:
             self.mspace = self.dwg.ModelSpace
-            self.master.title(self.title+' - '+self.dwg.Name.encode('utf-8'))
+            self.master.title(self.title+' - '+self.dwg.Name)
             for x in xrange(0,self.dwg.Layers.Count):
                 self.lmenu.add_command(label = self.dwg.Layers[x].Name, command = lambda x = x: self.SetActiveLayer(x))
             self.LayrVar.set(self.lmenu.entrycget(0, 'label'))
