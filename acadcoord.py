@@ -98,12 +98,14 @@ class main:
         self.DicReports = {
                                  0:u'Классическая (№ - X - Y - Длина - Угол)',
                                  1:u'Сокращенная (№ - X - Y)',
-                                 2:u'По РДС 30-201-98'
+                                 2:u'По РДС 30-201-98',
+                                 3:u'Для лесников (№ - Румб - Длина)'
                                 }
         self.DicAcadErrors = {
                                 1:u'AutoCAD не запущен',
                                 2:u'В AutoCAD нет открытых чертежей'
                              }
+        self.TplRumb = (u'СВ', u'ЮВ', u'ЮЗ', u'СЗ')
         self.title = u'Экспорт координат объектов AutoCAD'
         self.master.title(self.title)
         self.master.geometry('360x330')
@@ -209,7 +211,7 @@ class main:
     def GetDcmlSep(self):
         return locale.localeconv()['decimal_point']#str(bytes(str(3 / 2))[1])
         
-    def XlsCrdString(self, ws, row, mode, nmb, cxy, pxy, l, ang):
+    def XlsCrdString(self, ws, row, mode, nmb, cxy, pxy, l, ang, rmb):
         # ws - объект worksheet
         # row - номер строки
         # mode - вид ведомости
@@ -218,6 +220,7 @@ class main:
         # pxy - кортеж вида (f, f) - координаты предыдущей точки
         # l - длина
         # ang - кортеж вида (d, m.mm) - дирекционный угол
+        # rmb - кортеж вида (d, m.mm) - румб
         if mode == 0:
             ws.Rows[row].RowHeight = 25
             ws.Cells[row, 1] = str(nmb[0])
@@ -318,7 +321,23 @@ class main:
                     ws.Cells[row, i].Borders[4].LineStyle = 1
                     ws.Cells[row, i].Borders[4].Weight = 3
                 return row + 1
-                
+        elif mode == 3:
+            ws.Cells[row, 1] = str('\x27' + nmb[0] + ' - ' + nmb[1])
+            ws.Cells[row, 1].BorderAround(1,3,1,1)
+            ws.Cells[row, 1].HorizontalAlignment = 3
+            if l > 0:
+                ws.Cells[row, 4] = '{0:10.2f}'.format(l)
+            ws.Cells[row, 4].BorderAround(1,3,1,1)
+            ws.Cells[row, 4].NumberFormat = '0'+self.GetDcmlSep()+'00'
+            ws.Cells[row, 4].HorizontalAlignment = 3
+            if (rmb[0] >= 0) and (rmb[1] >= 0) and (rmb[2] >= 0):
+                ws.Cells[row, 3] = u'%(deg)02d° %(mnt)02d.%(dmnt)02d\'' % {'deg':rmb[0], 'mnt':rmb[1], 'dmnt':rmb[2]}
+                ws.Cells[row, 2] = rmb[3]
+            ws.Cells[row, 3].BorderAround(1,3,1,1)
+            ws.Cells[row, 3].HorizontalAlignment = 3
+            ws.Cells[row, 2].BorderAround(1,3,1,1)
+            ws.Cells[row, 2].HorizontalAlignment = 3
+            return row + 1
         
     def XlsUnderline(self, ws, row):
         for j in xrange(1,6):
@@ -370,6 +389,16 @@ class main:
             ws.Cells[row, 7].Borders[4].Weight = 3
             ws.Cells[row, 7].Borders[2].LineStyle = 1
             ws.Cells[row, 7].Borders[2].Weight = 3
+        elif mode == 3:
+            ws.Cells[row, 1] = u'№ точек'
+            ws.Cells[row, 1].BorderAround(1,3,1,1)
+            ws.Cells[row, 1].HorizontalAlignment = 3
+            ws.Cells[row, 2] = u'Направление'
+            ws.Cells[row, 2].BorderAround(1,3,1,1)
+            ws.Cells[row, 3] = u'Румб линии'
+            ws.Cells[row, 3].BorderAround(1,3,1,1)
+            ws.Cells[row, 4] = u'Длина линии, м'
+            ws.Cells[row, 4].BorderAround(1,3,1,1)
         return row + 1
         
     def ToExcel(self):
@@ -434,9 +463,13 @@ class main:
                     else:
                         _len = self.Pifagor(pxy[j], txy1)
                         _da = self.dir_angl(pxy[j], txy1)
-                    ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()), (self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom), '-'), (pxy[j][0], pxy[j][1]), (-1, -1), _len, _da)
+                    ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()),
+                                                   (self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom), '-'),
+                                                   (pxy[j][0], pxy[j][1]), (-1, -1), _len, _da, (-1,-1,-1,'-'))
                 _len = -1
-                ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()), (self.nprefix + str(lxy.index(txy1)+self.startnumpntfrom), '-'), (txy1[0], txy1[1]), (-1, -1), _len, (-1,-1,-1))
+                ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()),
+                                               (self.nprefix + str(lxy.index(txy1)+self.startnumpntfrom), '-'),
+                                               (txy1[0], txy1[1]), (-1, -1), _len, (-1,-1,-1), (-1,-1,-1,'-'))
                 if self.DicReports.values().index(self.RepVar.get()) == 0:
                     self.XlsUnderline(S, ROW-1)
             elif self.DicReports.values().index(self.RepVar.get()) == 2:
@@ -447,8 +480,25 @@ class main:
                     else:
                         _len = self.Pifagor(txy1, pxy[j])
                         _da = self.dir_angl(txy1, pxy[j])
-                    ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()), (self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom), self.nprefix + str(lxy.index(txy1) + self.startnumpntfrom)), (pxy[j][0], pxy[j][1]), txy1, _len, _da)
+                    ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()),
+                                                   (self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom), self.nprefix + str(lxy.index(txy1) + self.startnumpntfrom)),
+                                                   (pxy[j][0], pxy[j][1]), txy1, _len, _da,(-1,-1,-1,'-'))
                     txy1 = pxy[j]
+            elif self.DicReports.values().index(self.RepVar.get()) == 3:
+                for j in xrange(0,len(pxy)):
+                    if j < len(pxy)-1:
+                        _len = self.Pifagor(pxy[j], pxy[j+1])
+                        _ra = self.rmb_angl(pxy[j], pxy[j+1])
+                        ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()),
+                                                       (self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom), self.nprefix + str(lxy.index(pxy[j+1]) + self.startnumpntfrom)),
+                                                       (pxy[j][0], pxy[j][1]), (-1, -1), _len, (-1,-1,-1), _ra)
+                    else:
+                        _len = self.Pifagor(pxy[j], pxy[0])
+                        _ra = self.rmb_angl(pxy[j], pxy[0])
+                        ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()),
+                                                       (self.nprefix + str(lxy.index(pxy[j])+self.startnumpntfrom), self.nprefix + str(lxy.index(pxy[0])+self.startnumpntfrom)),
+                                                       (pxy[j][0], pxy[j][1]), (-1, -1), _len, (-1,-1,-1), _ra)
+                _len = -1
             i += 1
 
     def Quit(self):
@@ -683,12 +733,23 @@ class main:
     def dir_angl(self, t1, t2): # на вход - два кортежа вида (x, y), на выходе кортеж вида (d, m, dm)
         da = degrees(acos(fabs(t1[1] - t2[1]) / self.Pifagor(t1, t2)))
         if (t1[0] < t2[0]) and (t1[1] > t2[1]): # 2 координатная четверть
-           da = 180 - da
+            da = 180 - da
         elif (t1[0] >= t2[0]) and (t1[1] >= t2[1]): # 3 координатная четверть
             da = 180 + da
         elif (t1[0] > t2[0]) and (t1[1] <= t2[1]): # 4 координатная четверть
             da = 360 - da
         return (trunc(da), trunc(modf(da)[0] * 60), trunc((modf(da)[0] * 60 -  modf(modf(da)[0] * 60)[1]) * 100 ))
+        
+    def rmb_angl(self, t1, t2):
+        da = degrees(acos(fabs(t1[1] - t2[1]) / self.Pifagor(t1, t2)))
+        st = self.TplRumb[0]
+        if (t1[0] < t2[0]) and (t1[1] > t2[1]): # 2 координатная четверть
+            st = self.TplRumb[1]
+        elif (t1[0] >= t2[0]) and (t1[1] >= t2[1]): # 3 координатная четверть
+            st = self.TplRumb[2]
+        elif (t1[0] > t2[0]) and (t1[1] <= t2[1]): # 4 координатная четверть
+            st = self.TplRumb[3]
+        return (trunc(da), trunc(modf(da)[0] * 60), trunc((modf(da)[0] * 60 -  modf(modf(da)[0] * 60)[1]) * 100 ), st)
         
     def GetNordPnt(self, crdlst):
         # crdlst - список кортежей вида (X, Y)
