@@ -99,7 +99,8 @@ class main:
                                  0:u'Классическая (№ - X - Y - Длина - Угол)',
                                  1:u'Сокращенная (№ - X - Y)',
                                  2:u'По РДС 30-201-98',
-                                 3:u'Для лесников (№ - Румб - Длина)'
+                                 3:u'Для лесников (№ - Румб - Длина)',
+                                 4:u'Для схемы на КПТ (Приказ 762)'
                                 }
         self.DicAcadErrors = {
                                 1:u'AutoCAD не запущен',
@@ -338,6 +339,20 @@ class main:
             ws.Cells[row, 2].BorderAround(1,3,1,1)
             ws.Cells[row, 2].HorizontalAlignment = 3
             return row + 1
+        elif mode == 4:
+            ws.Cells[row, 1] = str('\x27' + nmb[0] + ' - ' + nmb[1])
+            ws.Cells[row, 1].BorderAround(1,3,1,1)
+            ws.Cells[row, 1].HorizontalAlignment = 3
+            ws.Cells[row, 1] = str(nmb[0])
+            ws.Cells[row, 1].BorderAround(1,3,1,1)
+            ws.Cells[row, 1].HorizontalAlignment = 3
+            ws.Cells[row, 3] = '{0:10.0f}'.format(cxy[0])
+            ws.Cells[row, 3].BorderAround(1,3,1,1)
+            ws.Cells[row, 3].NumberFormat = '0'
+            ws.Cells[row, 2] = '{0:10.0f}'.format(cxy[1])
+            ws.Cells[row, 2].BorderAround(1,3,1,1)
+            ws.Cells[row, 2].NumberFormat = '0'
+            return row + 1
         
     def XlsUnderline(self, ws, row):
         for j in xrange(1,6):
@@ -346,6 +361,7 @@ class main:
             ws.Rows[row].RowHeight = 15
         
     def XlsHdrString(self, ws, row, mode):
+        x = 1
         if mode < 2:
             ws.Cells[row, 1] = u'Номер точки'
             ws.Cells[row, 1].BorderAround(1,3,1,1)
@@ -399,7 +415,38 @@ class main:
             ws.Cells[row, 3].BorderAround(1,3,1,1)
             ws.Cells[row, 4] = u'Длина линии, м'
             ws.Cells[row, 4].BorderAround(1,3,1,1)
-        return row + 1
+        elif mode == 4:
+            ws.Cells[row, 1] = u'Обозначение характерных точек границ'
+            st = 'A'+str(row)+':A'+str(row+1)
+            ws.Range[st].Merge()
+            ws.Range[st].Borders[1].LineStyle = 1
+            ws.Range[st].Borders[1].Weight = 3
+            ws.Range[st].Borders[2].LineStyle = 1
+            ws.Range[st].Borders[2].Weight = 3
+            ws.Range[st].Borders[3].LineStyle = 1
+            ws.Range[st].Borders[3].Weight = 3
+            ws.Range[st].Borders[4].LineStyle = 1
+            ws.Range[st].Borders[4].Weight = 3
+            ws.Range[st].HorizontalAlignment = 3
+            ws.Range[st].VerticalAlignment = 2
+            ws.Cells[row, 2] = u'Координаты, м'
+            st = 'B'+str(row)+':C'+str(row)
+            ws.Range[st].Merge()
+            ws.Range[st].Borders[1].LineStyle = 1
+            ws.Range[st].Borders[1].Weight = 3
+            ws.Range[st].Borders[2].LineStyle = 1
+            ws.Range[st].Borders[2].Weight = 3
+            ws.Range[st].Borders[3].LineStyle = 1
+            ws.Range[st].Borders[3].Weight = 3
+            ws.Range[st].Borders[4].LineStyle = 1
+            ws.Range[st].Borders[4].Weight = 3
+            ws.Range[st].HorizontalAlignment = 3
+            ws.Cells[row+1, 2] = u'X, м'
+            ws.Cells[row+1, 2].BorderAround(1,3,1,1)
+            ws.Cells[row+1, 3] = u'Y, м'
+            ws.Cells[row+1, 3].BorderAround(1,3,1,1)
+            x += 1
+        return row + x
         
     def ToExcel(self):
         xls = CreateObject("Excel.Application")
@@ -420,23 +467,46 @@ class main:
             S.Columns[5].ColumnWidth = 10
             S.Columns[6].ColumnWidth = 3
             S.Columns[7].ColumnWidth = 10
+        elif self.DicReports.values().index(self.RepVar.get()) == 4:
+            S.Columns[1].ColumnWidth = 50
+            S.Columns[2].ColumnWidth = 10
+            S.Columns[3].ColumnWidth = 10
         xls.Visible = True
         ROW = 0
         if self.DicReports.values().index(self.RepVar.get()) == 2:
             ROW += 1
             S.Cells[ROW, 1] = u'ВЕДОМОСТЬ КООРДИНАТ ТОЧЕК ГРАНИЦЫ ТЕХНИЧЕСКОЙ ЗОНЫ ЛИНЕЙНОГО ОБЪЕКТА'
+        elif self.DicReports.values().index(self.RepVar.get()) == 4:
+            ROW += 1
+            S.Cells[ROW, 1] = u'Схема расположения земельного участка или земельных участков'
+            ROW += 1
+            S.Cells[ROW, 1] = u'на кадастровом плане территории'
         lxy = [] # Сквозная нумерация точек
         pxy = [] # Список точек внутри участка для исключения дублирования строк в ведомости
         i = 1 # Порядковый номер участка
+        _len = -1
+        _ra = -1
         for crdlst in self.PLineCrd:
-            ROW += 1
-            st = u'Участок '
-            S.Cells[ROW, 1] = st + self.nprefix + str(i + self.startnumprclfrom - 1)
-            ROW += 1
-            st = u'Площадь '
-            s1 = str(trunc(crdlst['sq']))
-            s2 = '{0:'+str(len(s1))+'.0f}'
-            S.Cells[ROW, 1] = st + s2.format(crdlst['sq']) + u' кв.м.'
+            if self.DicReports.values().index(self.RepVar.get()) < 4:
+                ROW += 1
+                st = u'Участок '
+                S.Cells[ROW, 1] = st + self.nprefix + str(i + self.startnumprclfrom - 1)
+                ROW += 1
+                st = u'Площадь '
+                s1 = str(trunc(crdlst['sq']))
+                s2 = '{0:'+str(len(s1))+'.0f}'
+                S.Cells[ROW, 1] = st + s2.format(crdlst['sq']) + u' кв.м.'
+            elif self.DicReports.values().index(self.RepVar.get()) == 4:
+                # Ведомость для схемы на КПТ по приказу 762
+                if len(self.PLineCrd) > 1:
+                    ROW += 1
+                    st = u'Условный номер земельного участка ЗУ'
+                    S.Cells[ROW, 1] = st + self.nprefix + str(i + self.startnumprclfrom - 1)
+                ROW += 1
+                st = u'Площадь земельного участка '
+                s1 = str(trunc(crdlst['sq']))
+                s2 = '{0:'+str(len(s1))+'.0f}'
+                S.Cells[ROW, 1] = st + s2.format(crdlst['sq']) + u' кв.м.'
             self.MarkParcel(crdlst, self.nprefix + str(i + self.startnumprclfrom - 1), 'Numbers')
             ROW += 1
             ROW = self.XlsHdrString(S, ROW,  self.DicReports.values().index(self.RepVar.get()))
@@ -499,6 +569,11 @@ class main:
                                                        (self.nprefix + str(lxy.index(pxy[j])+self.startnumpntfrom), self.nprefix + str(lxy.index(pxy[0])+self.startnumpntfrom)),
                                                        (pxy[j][0], pxy[j][1]), (-1, -1), _len, (-1,-1,-1), _ra)
                 _len = -1
+            elif self.DicReports.values().index(self.RepVar.get()) == 4:
+                for j in xrange(0,len(pxy)):
+                        ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()),
+                                                       (self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom), self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom)),
+                                                       (pxy[j][0], pxy[j][1]), (-1, -1), _len, (-1,-1,-1), _ra)
             i += 1
 
     def Quit(self):
@@ -550,11 +625,12 @@ class main:
 
     def SetActiveReport(self, idx):
         self.RepVar.set(self.rmenu.entrycget(idx, 'label'))
+        self.LayerObjects(self.LayrVar.get())
         
     def ResetCoord(self):
         del self.PLineCrd[0:len(self.PLineCrd)]
         
-    def CollectCoord(self, sq, coords):
+    def CollectCoord(self, coords):
         dic_pl = {}
         tmplst = []
         if (len(coords) % 2 == 0):
@@ -577,7 +653,10 @@ class main:
             crdy = coords[1:len(coords)-1:3]
             crdz = coords[2:len(coords):3]
         for j in xrange(0,len(crdx)):
-            txy = (round(crdx[j],2), round(crdy[j],2))
+            if self.DicReports.values().index(self.RepVar.get()) < 4:
+                txy = (round(crdx[j],2), round(crdy[j],2))
+            elif self.DicReports.values().index(self.RepVar.get()) == 4:
+                txy = (round(crdx[j],0), round(crdy[j],0))
             tmplst.append(txy)
         dic_pl['sq'] = self.area(tmplst)
         dic_pl['crd'] = tmplst
@@ -789,8 +868,7 @@ class main:
             if entity.Layer == LName:
                 ocnt[entity.EntityType] += 1
                 if entity.EntityType in (23,24):
-                    # также передать в collectcoord площадь
-                    self.CollectCoord(entity.Area, entity.Coordinates)
+                    self.CollectCoord(entity.Coordinates)
         for oc in xrange(1,len(ocnt)):
             if ocnt[oc] > 0:
                 self.master.entitys.insert(END, self.DicObjType[oc]+' ('+str(oc)+')'+' - '+str(ocnt[oc]))
