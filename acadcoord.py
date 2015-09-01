@@ -486,6 +486,15 @@ class main:
         i = 1 # Порядковый номер участка
         _len = -1
         _ra = -1
+        tsq = 0.0
+        if len(self.PLineCrd) > 1:
+            for crdlst in self.PLineCrd:
+                tsq += crdlst['sq']
+            st = u'Общая площадь земельных участков '
+            s1 = str(trunc(tsq))
+            s2 = '{0:'+str(len(s1))+'.0f}'
+            ROW += 1
+            S.Cells[ROW, 1] = st + s2.format(tsq) + u' кв.м.'
         for crdlst in self.PLineCrd:
             if self.DicReports.values().index(self.RepVar.get()) < 4:
                 ROW += 1
