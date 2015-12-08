@@ -560,7 +560,7 @@ class main:
                         _len = self.Pifagor(txy1, pxy[j])
                         _da = self.dir_angl(txy1, pxy[j])
                     ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()),
-                                                   (self.nprefix.encode('cp1251') + str(lxy.index(pxy[j]) + self.startnumpntfrom), self.nprefix + str(lxy.index(txy1) + self.startnumpntfrom)),
+                                                   (self.nprefix.encode('cp1251') + str(lxy.index(pxy[j]) + self.startnumpntfrom), self.nprefix.encode('cp1251') + str(lxy.index(txy1) + self.startnumpntfrom)),
                                                    (pxy[j][0], pxy[j][1]), txy1, _len, _da,(-1,-1,-1,'-'))
                     txy1 = pxy[j]
             elif self.DicReports.values().index(self.RepVar.get()) == 3:
@@ -569,19 +569,19 @@ class main:
                         _len = self.Pifagor(pxy[j], pxy[j+1])
                         _ra = self.rmb_angl(pxy[j], pxy[j+1])
                         ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()),
-                                                       (self.nprefix.encode('cp1251') + str(lxy.index(pxy[j]) + self.startnumpntfrom), self.nprefix + str(lxy.index(pxy[j+1]) + self.startnumpntfrom)),
+                                                       (self.nprefix.encode('cp1251') + str(lxy.index(pxy[j]) + self.startnumpntfrom), self.nprefix.encode('cp1251') + str(lxy.index(pxy[j+1]) + self.startnumpntfrom)),
                                                        (pxy[j][0], pxy[j][1]), (-1, -1), _len, (-1,-1,-1), _ra)
                     else:
                         _len = self.Pifagor(pxy[j], pxy[0])
                         _ra = self.rmb_angl(pxy[j], pxy[0])
                         ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()),
-                                                       (self.nprefix.encode('cp1251') + str(lxy.index(pxy[j])+self.startnumpntfrom), self.nprefix + str(lxy.index(pxy[0])+self.startnumpntfrom)),
+                                                       (self.nprefix.encode('cp1251') + str(lxy.index(pxy[j])+self.startnumpntfrom), self.nprefix.encode('cp1251') + str(lxy.index(pxy[0])+self.startnumpntfrom)),
                                                        (pxy[j][0], pxy[j][1]), (-1, -1), _len, (-1,-1,-1), _ra)
                 _len = -1
             elif self.DicReports.values().index(self.RepVar.get()) == 4:
                 for j in xrange(0,len(pxy)):
                         ROW = self.XlsCrdString(S, ROW, self.DicReports.values().index(self.RepVar.get()),
-                                                       (self.nprefix.encode('cp1251') + str(lxy.index(pxy[j]) + self.startnumpntfrom), self.nprefix + str(lxy.index(pxy[j]) + self.startnumpntfrom)),
+                                                       (self.nprefix.encode('cp1251') + str(lxy.index(pxy[j]) + self.startnumpntfrom), self.nprefix.encode('cp1251') + str(lxy.index(pxy[j]) + self.startnumpntfrom)),
                                                        (pxy[j][0], pxy[j][1]), (-1, -1), _len, (-1,-1,-1), _ra)
             i += 1
 
