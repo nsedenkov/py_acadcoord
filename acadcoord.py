@@ -811,7 +811,9 @@ class main:
             looplst.extend(fndlst)
             del fndlst[0:len(fndlst)]
             reslst.extend(looplst)
-        reslst.extend(tmplst)
+        # последний оставшийся контур также не забыть "свапнуть" и добавить в reslst
+        tmpcrd = self.SwapPntLst(tmplst.pop(0), nmbdir)
+        reslst.append(tmpcrd)
         self.ResetCoord()
         self.PLineCrd.extend(reslst)
         
